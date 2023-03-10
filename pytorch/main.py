@@ -58,7 +58,7 @@ def main(context):
         model_factory = architectures.__dict__[args.arch]
         model_params = dict(pretrained=args.pretrained, num_classes=num_classes)
         model = model_factory(**model_params)
-        model = nn.DataParallel(model).cuda()
+        model = nn.DataParallel(model).to(args.device)
 
         if ema:
             for param in model.parameters():
@@ -196,7 +196,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
 def train(train_loader, model, ema_model, optimizer, epoch, log):
     global global_step
 
-    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).cuda()
+    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
     if args.consistency_type == 'mse':
         consistency_criterion = losses.softmax_mse_loss
     elif args.consistency_type == 'kl':
@@ -220,8 +220,8 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         meters.update('lr', optimizer.param_groups[0]['lr'])
 
         input_var = torch.autograd.Variable(input)
-        ema_input_var = torch.autograd.Variable(ema_input, volatile=True)
-        target_var = torch.autograd.Variable(target.cuda())
+        ema_input_var = torch.autograd.Variable(ema_input)
+        target_var = torch.autograd.Variable(target.to(args.device))
 
         minibatch_size = len(target_var)
         labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum()
@@ -246,7 +246,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         if args.logit_distance_cost >= 0:
             class_logit, cons_logit = logit1, logit2
             res_loss = args.logit_distance_cost * residual_logit_criterion(class_logit, cons_logit) / minibatch_size
-            meters.update('res_loss', res_loss.data[0])
+            meters.update('res_loss', res_loss.data)
         else:
             class_logit, cons_logit = logit1, logit1
             res_loss = 0
@@ -267,7 +267,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             meters.update('cons_loss', 0)
 
         loss = class_loss + consistency_loss + res_loss
-        # assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
+        assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
         meters.update('loss', loss.data)
 
         prec1, prec5 = accuracy(class_logit.data, target_var.data, topk=(1, 5))
@@ -294,26 +294,25 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         end = time.time()
 
         if i % args.print_freq == 0:
-            print(epoch + i / len(train_loader), meters['top1'].avg, meters['top5'].avg)
-            #LOG.info(
-            #    'Epoch: [{0}][{1}/{2}]\t'
-            #    'Time {meters[batch_time]:.3f}\t'
-            #    'Data {meters[data_time]:.3f}\t'
-            #    'Class {meters[class_loss]:.4f}\t'
-            #    'Cons {meters[cons_loss]:.4f}\t'
-            #    'Prec@1 {meters[top1]:.3f}\t'
-            #    'Prec@5 {meters[top5]:.3f}'.format(
-            #        epoch, i, len(train_loader), meters=meters))
-            #log.record(epoch + i / len(train_loader), {
-            #    'step': global_step,
-            #    **meters.values(),
-            #    **meters.averages(),
-            #    **meters.sums()
-            #})
+            LOG.info(
+                'Epoch: [{0}][{1}/{2}]\t'
+                'Time {meters[batch_time]:.3f}\t'
+                'Data {meters[data_time]:.3f}\t'
+                'Class {meters[class_loss]:.4f}\t'
+                'Cons {meters[cons_loss]:.4f}\t'
+                'Prec@1 {meters[top1]:.3f}\t'
+                'Prec@5 {meters[top5]:.3f}'.format(
+                    epoch, i, len(train_loader), meters=meters))
+            log.record(epoch + i / len(train_loader), {
+                'step': global_step,
+                **meters.values(),
+                **meters.averages(),
+                **meters.sums()
+            })
 
 
 def validate(eval_loader, model, log, global_step, epoch):
-    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).cuda()
+    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
     meters = AverageMeterSet()
 
     # switch to evaluate mode
@@ -324,7 +323,7 @@ def validate(eval_loader, model, log, global_step, epoch):
         meters.update('data_time', time.time() - end)
 
         input_var = torch.autograd.Variable(input, volatile=True)
-        target_var = torch.autograd.Variable(target.cuda(), volatile=True)
+        target_var = torch.autograd.Variable(target.to(args.device), volatile=True)
 
         minibatch_size = len(target_var)
         labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum()
@@ -339,36 +338,33 @@ def validate(eval_loader, model, log, global_step, epoch):
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output1.data, target_var.data, topk=(1, 5))
         meters.update('class_loss', class_loss.data, labeled_minibatch_size)
-        meters.update('top1', prec1, labeled_minibatch_size)
-        meters.update('error1', 100.0 - prec1, labeled_minibatch_size)
+        meters.update('top1', prec1[0], labeled_minibatch_size)
+        meters.update('error1', 100.0 - prec1[0], labeled_minibatch_size)
         meters.update('top5', prec5[0], labeled_minibatch_size)
-        meters.update('error5', 100.0 - prec5, labeled_minibatch_size)
+        meters.update('error5', 100.0 - prec5[0], labeled_minibatch_size)
 
         # measure elapsed time
         meters.update('batch_time', time.time() - end)
         end = time.time()
 
         if i % args.print_freq == 0:
-            print(i, meters['top1'].avg, meters['top5'].avg)
-            #LOG.info(
-            #    'Test: [{0}/{1}]\t'
-            #    'Time {meters[batch_time]:.3f}\t'
-            #    'Data {meters[data_time]:.3f}\t'
-            #    'Class {meters[class_loss]:.4f}\t'
-            #    'Prec@1 {meters[top1]:.3f}\t'
-            #    'Prec@5 {meters[top5]:.3f}'.format(
-            #        i, len(eval_loader), meters=meters))
+            LOG.info(
+                'Test: [{0}/{1}]\t'
+                'Time {meters[batch_time]:.3f}\t'
+                'Data {meters[data_time]:.3f}\t'
+                'Class {meters[class_loss]:.4f}\t'
+                'Prec@1 {meters[top1]:.3f}\t'
+                'Prec@5 {meters[top5]:.3f}'.format(
+                    i, len(eval_loader), meters=meters))
 
-    print(i, meters['top1'].avg, meters['top5'].avg)
-
-    #LOG.info(' * Prec@1 {top1.avg:.3f}\tPrec@5 {top5.avg:.3f}'
-    #      .format(top1=meters['top1'], top5=meters['top5']))
-    #log.record(epoch, {
-    #    'step': global_step,
-    #    **meters.values(),
-    #    **meters.averages(),
-    #    **meters.sums()
-    #})
+    LOG.info(' * Prec@1 {top1.avg:.3f}\tPrec@5 {top5.avg:.3f}'
+          .format(top1=meters['top1'], top5=meters['top5']))
+    log.record(epoch, {
+        'step': global_step,
+        **meters.values(),
+        **meters.averages(),
+        **meters.sums()
+    })
 
     return meters['top1'].avg
 
@@ -424,4 +420,7 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = cli.parse_commandline_args()
+    args.device = torch.device(
+        "cuda:%d" % (args.gpu_id) if torch.cuda.is_available() else "cpu")
+    print(f"==> Using device {args.device}")
     main(RunContext(__file__, 0))
