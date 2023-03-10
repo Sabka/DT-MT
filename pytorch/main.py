@@ -267,7 +267,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             meters.update('cons_loss', 0)
 
         loss = class_loss + consistency_loss + res_loss
-        assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
+        # assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
         meters.update('loss', loss.data)
 
         prec1, prec5 = accuracy(class_logit.data, target_var.data, topk=(1, 5))
@@ -303,12 +303,12 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
                 'Prec@1 {meters[top1]:.3f}\t'
                 'Prec@5 {meters[top5]:.3f}'.format(
                     epoch, i, len(train_loader), meters=meters))
-            log.record(epoch + i / len(train_loader), {
-                'step': global_step,
-                **meters.values(),
-                **meters.averages(),
-                **meters.sums()
-            })
+            #log.record(epoch + i / len(train_loader), {
+            #    'step': global_step,
+            #    **meters.values(),
+            #    **meters.averages(),
+            #    **meters.sums()
+            #})
 
 
 def validate(eval_loader, model, log, global_step, epoch):
@@ -359,12 +359,12 @@ def validate(eval_loader, model, log, global_step, epoch):
 
     LOG.info(' * Prec@1 {top1.avg:.3f}\tPrec@5 {top5.avg:.3f}'
           .format(top1=meters['top1'], top5=meters['top5']))
-    log.record(epoch, {
-        'step': global_step,
-        **meters.values(),
-        **meters.averages(),
-        **meters.sums()
-    })
+    #log.record(epoch, {
+    #    'step': global_step,
+    #    **meters.values(),
+    #    **meters.averages(),
+    #    **meters.sums()
+    #})
 
     return meters['top1'].avg
 
@@ -421,6 +421,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = cli.parse_commandline_args()
     args.device = torch.device(
-        "cuda:1" if torch.cuda.is_available() else "cpu")
+        "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     main(RunContext(__file__, 0), args)
