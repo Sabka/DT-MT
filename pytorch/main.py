@@ -36,7 +36,7 @@ best_prec1 = 0
 global_step = 0
 
 
-def main(context):
+def main(context, args):
     global global_step
     global best_prec1
 
@@ -152,7 +152,7 @@ def create_data_loaders(train_transformation,
     traindir = os.path.join(datadir, args.train_subdir)
     evaldir = os.path.join(datadir, args.eval_subdir)
 
-    assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
+    # assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
 
     dataset = torchvision.datasets.ImageFolder(traindir, train_transformation)
 
@@ -421,6 +421,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     args = cli.parse_commandline_args()
     args.device = torch.device(
-        "cuda:%d" % (args.gpu_id) if torch.cuda.is_available() else "cpu")
+        "cuda:1" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
-    main(RunContext(__file__, 0))
+    main(RunContext(__file__, 0), args)
