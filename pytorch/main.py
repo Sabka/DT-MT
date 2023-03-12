@@ -152,7 +152,7 @@ def create_data_loaders(train_transformation,
     traindir = os.path.join(datadir, args.train_subdir)
     evaldir = os.path.join(datadir, args.eval_subdir)
 
-    # assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
+    assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
 
     dataset = torchvision.datasets.ImageFolder(traindir, train_transformation)
 
@@ -267,7 +267,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             meters.update('cons_loss', 0)
 
         loss = class_loss + consistency_loss + res_loss
-        # assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
+        assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
         meters.update('loss', loss.data)
 
         prec1, prec5 = accuracy(class_logit.data, target_var.data, topk=(1, 5))
