@@ -17,9 +17,10 @@ LOG = logging.getLogger('main')
 __all__ = ['parse_cmd_args', 'parse_dict_args']
 
 
+# updated defaults to be able to run from pycharm
 def create_parser():
-    parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-    parser.add_argument('--dataset', metavar='DATASET', default='imagenet',
+    parser = argparse.ArgumentParser(description='PyTorch Cifar10 Training')
+    parser.add_argument('--dataset', metavar='DATASET', default='cifar10',
                         choices=datasets.__all__,
                         help='dataset: ' +
                             ' | '.join(datasets.__all__) +
@@ -28,23 +29,23 @@ def create_parser():
                         help='the subdirectory inside the data directory that contains the training data')
     parser.add_argument('--eval-subdir', type=str, default='val',
                         help='the subdirectory inside the data directory that contains the evaluation data')
-    parser.add_argument('--labels', default=None, type=str, metavar='FILE',
+    parser.add_argument('--labels', default="data-local/labels/cifar10/1000_balanced_labels/00.txt", type=str, metavar='FILE',
                         help='list of image labels (default: based on directory structure)')
     parser.add_argument('--exclude-unlabeled', default=False, type=str2bool, metavar='BOOL',
                         help='exclude unlabeled examples from the training set')
-    parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
+    parser.add_argument('--arch', '-a', metavar='ARCH', default='cifar_shakeshake26',
                         choices=architectures.__all__,
                         help='model architecture: ' +
                             ' | '.join(architectures.__all__))
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
-    parser.add_argument('--epochs', default=90, type=int, metavar='N',
+    parser.add_argument('--epochs', default=180, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('-b', '--batch-size', default=256, type=int,
                         metavar='N', help='mini-batch size (default: 256)')
-    parser.add_argument('--labeled-batch-size', default=None, type=int,
+    parser.add_argument('--labeled-batch-size', default=62, type=int,
                         metavar='N', help="labeled examples per minibatch (default: no constrain)")
     parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                         metavar='LR', help='max learning rate')
@@ -52,7 +53,7 @@ def create_parser():
                         metavar='LR', help='initial learning rate when using linear rampup')
     parser.add_argument('--lr-rampup', default=0, type=int, metavar='EPOCHS',
                         help='length of learning rate rampup in the beginning')
-    parser.add_argument('--lr-rampdown-epochs', default=None, type=int, metavar='EPOCHS',
+    parser.add_argument('--lr-rampdown-epochs', default=210, type=int, metavar='EPOCHS',
                         help='length of learning rate cosine rampdown (>= length of training)')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
@@ -62,12 +63,12 @@ def create_parser():
                         metavar='W', help='weight decay (default: 1e-4)')
     parser.add_argument('--ema-decay', default=0.999, type=float, metavar='ALPHA',
                         help='ema variable decay rate (default: 0.999)')
-    parser.add_argument('--consistency', default=None, type=float, metavar='WEIGHT',
+    parser.add_argument('--consistency', default=100.0, type=float, metavar='WEIGHT',
                         help='use consistency loss with given weight (default: None)')
     parser.add_argument('--consistency-type', default="mse", type=str, metavar='TYPE',
                         choices=['mse', 'kl'],
                         help='consistency loss type to use')
-    parser.add_argument('--consistency-rampup', default=30, type=int, metavar='EPOCHS',
+    parser.add_argument('--consistency-rampup', default=5, type=int, metavar='EPOCHS',
                         help='length of the consistency loss ramp-up')
     parser.add_argument('--logit-distance-cost', default=-1, type=float, metavar='WEIGHT',
                         help='let the student model have two outputs and use an MSE loss between the logits with the given weight (default: only have one output)')
