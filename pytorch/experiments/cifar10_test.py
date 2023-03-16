@@ -9,6 +9,7 @@
 
 import sys
 import logging
+import os
 
 import torch
 
@@ -90,7 +91,9 @@ def run(title, base_batch_size, base_labeled_batch_size, base_lr, n_labels, data
     }
     context = RunContext(__file__, "{}_{}".format(n_labels, data_seed))
     main.args = parse_dict_args(**adapted_args, **kwargs)
-    main.main(context)
+    main.args.device = torch.device("cuda:0")
+
+    main.main(context, main.args)
 
 
 if __name__ == "__main__":

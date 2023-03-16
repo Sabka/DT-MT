@@ -423,4 +423,5 @@ if __name__ == '__main__':
     args.device = torch.device(
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
+    print(args)
     main(RunContext(__file__, 0), args)
