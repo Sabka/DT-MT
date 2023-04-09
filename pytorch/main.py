@@ -28,6 +28,9 @@ from mean_teacher.run_context import RunContext
 from mean_teacher.data import NO_LABEL
 from mean_teacher.utils import *
 
+import numpy
+from quicksom.som import SOM
+
 
 LOG = logging.getLogger('main')
 
@@ -98,11 +101,17 @@ def main(context, args):
         validate(eval_loader, ema_model, ema_validation_log, global_step, args.start_epoch)
         return
 
+    #if args.som_loss:
+    #    som = SOM(8, 8, 128, n_epoch=20)
+
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        train(train_loader, model, ema_model, optimizer, epoch, training_log)
+        X = train(train_loader, model, ema_model, optimizer, epoch, training_log)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
+
+        #if args.som_loss:
+        #    som.fit(X, batch_size=100)
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -211,6 +220,9 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
     model.train()
     ema_model.train()
 
+    #ema_model_x_convs =
+    #model_x_convs =
+
     end = time.time()
     for i, ((input, ema_input), target) in enumerate(train_loader):
         # measure data loading time
@@ -228,8 +240,12 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         assert labeled_minibatch_size > 0
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
-        ema_model_out = ema_model(ema_input_var)
-        model_out = model(input_var)
+        ema_model_out1, ema_model_out2, ema_model_x_conv = ema_model(ema_input_var)
+        ema_model_out = (ema_model_out1, ema_model_out2)
+        model_out1, model_out2, model_x_conv = model(input_var)
+        model_out = (model_out1, model_out2)
+
+        print(ema_model_x_conv.shape, model_x_conv.shape)
 
         if isinstance(model_out, Variable):
             assert args.logit_distance_cost < 0
@@ -309,6 +325,8 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             #    **meters.averages(),
             #    **meters.sums()
             #})
+
+    return []
 
 
 def validate(eval_loader, model, log, global_step, epoch):
@@ -423,5 +441,5 @@ if __name__ == '__main__':
     args.device = torch.device(
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
-    print(args)
+    #print(args)
     main(RunContext(__file__, 0), args)
