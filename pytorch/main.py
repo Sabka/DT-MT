@@ -101,17 +101,20 @@ def main(context, args):
         validate(eval_loader, ema_model, ema_validation_log, global_step, args.start_epoch)
         return
 
-    #if args.som_loss:
-    #    som = SOM(8, 8, 128, n_epoch=20)
+    if True: #args.som_loss:
+        som = SOM(8, 8, 128, n_epoch=20)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        X = train(train_loader, model, ema_model, optimizer, epoch, training_log)
+        model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
-        #if args.som_loss:
-        #    som.fit(X, batch_size=100)
+        if True: #args.som_loss:
+            som.fit(model_x_convs, batch_size=100)
+            som.fit(ema_x_convs, batch_size=100)
+
+        # TODO - predict inputs errors by som.predict_cluster(X) and use as consistency loss
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -220,8 +223,8 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
     model.train()
     ema_model.train()
 
-    #ema_model_x_convs =
-    #model_x_convs =
+    ema_model_x_convs = None
+    model_x_convs = None
 
     end = time.time()
     for i, ((input, ema_input), target) in enumerate(train_loader):
@@ -245,7 +248,19 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         model_out1, model_out2, model_x_conv = model(input_var)
         model_out = (model_out1, model_out2)
 
-        print(ema_model_x_conv.shape, model_x_conv.shape)
+        #print(ema_model_x_conv.shape, model_x_conv.shape)
+
+        # take x convs to one tensor
+        if model_x_convs == None:
+            model_x_convs = model_x_conv
+        else:
+            model_x_convs = torch.cat((model_x_convs, model_x_conv), 0)
+
+        if ema_model_x_convs == None:
+            ema_model_x_convs = ema_model_x_conv
+        else:
+            ema_model_x_convs = torch.cat((ema_model_x_convs, ema_model_x_conv), 0)
+
 
         if isinstance(model_out, Variable):
             assert args.logit_distance_cost < 0
@@ -326,7 +341,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             #    **meters.sums()
             #})
 
-    return []
+    return model_x_convs, ema_model_x_convs
 
 
 def validate(eval_loader, model, log, global_step, epoch):
