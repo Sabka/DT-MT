@@ -13,6 +13,8 @@ Vytvorenie prostredia s potrebnymi libkami:
 
 `conda activate mt2`
 
+`pip install quicksom`
+
 ## bugs
 - async -> remove async
 - .cuda() -> .to(args.device)
