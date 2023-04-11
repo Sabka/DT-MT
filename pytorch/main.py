@@ -101,20 +101,21 @@ def main(context, args):
         validate(eval_loader, ema_model, ema_validation_log, global_step, args.start_epoch)
         return
 
+    som = None
+    use_som = False
     if True: #args.som_loss:
         som = SOM(8, 8, 128, n_epoch=20)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log)
+        model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log, som, use_som)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
-        if True: #args.som_loss:
+        if True: # TODO args.som_loss:
             som.fit(model_x_convs, batch_size=100)
             som.fit(ema_x_convs, batch_size=100)
-
-        # TODO - predict inputs errors by som.predict_cluster(X) and use as consistency loss
+            use_som = True
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -205,7 +206,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
         ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
 
-def train(train_loader, model, ema_model, optimizer, epoch, log):
+def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
     global global_step
 
     class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
@@ -291,7 +292,27 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
-            consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
+            if True and use_som: # TODO args.som_loss:
+
+                for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
+
+                    dists = som.metric(torch.tensor(x_conv_student, som.centroids)) # TODO refactor to function, remove loop
+                    mindist, bmu_index = torch.min(dists, -1)
+                    bmu_loc = som.locations[bmu_index].reshape(150, 2)
+                    winner_student = som.centroids[bmu_loc[0] * 30 + bmu_loc[1]]
+
+                    dists = som.metric(torch.tensor(x_conv_teacher, som.centroids))
+                    mindist, bmu_index = torch.min(dists, -1)
+                    bmu_loc = som.locations[bmu_index].reshape(150, 2)
+                    winner_teacher = som.centroids[bmu_loc[0] * 30 + bmu_loc[1]]
+
+                    consistency_loss += consistency_weight * ((x_conv_student-winner_student)**2 +
+                                                             (x_conv_teacher-winner_teacher)**2 +
+                                                             (winner_student-winner_teacher)**2
+                                                             )
+
+            else:
+                consistency_loss = 0 # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
             meters.update('cons_loss', consistency_loss.data)
         else:
             consistency_loss = 0
