@@ -12,7 +12,7 @@ Vytvorenie prostredia s potrebnymi libkami:
 
 `conda install -n mt tqdm`
 
-`conda install -c anaconda scikit-learn`
+`conda install -c anaconda scikit-learn quicksom`
 
 `conda install -c conda-forge matplotlib`
 
