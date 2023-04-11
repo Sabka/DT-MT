@@ -6,21 +6,12 @@ bolo treba stiahnut, overit a nainstalovat condu do mojho homu https://docs.cond
 
 Vytvorenie prostredia s potrebnymi libkami:
 
-`conda create --name torch_cuda`
 
-`conda install -n torch_cuda  pytorch-gpu torchvision cudatoolkit=11.1 -c conda-forge`
+`conda create mt2`
 
-`conda install -n mt tqdm`
+`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forge`
 
-`conda install -c anaconda scikit-learn quicksom`
-
-`conda install -c conda-forge matplotlib`
-
-or just
-
-`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee`
-
-`conda activate torch_cuda`
+`conda activate mt2`
 
 ## bugs
 - async -> remove async
