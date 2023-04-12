@@ -7,9 +7,9 @@ bolo treba stiahnut, overit a nainstalovat condu do mojho homu https://docs.cond
 Vytvorenie prostredia s potrebnymi libkami:
 
 
-`conda create mt2`
+`conda create -n mt2`
 
-`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forge`
+`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn scipy=1.8 pandas cudatoolkit=11.1 -c conda-forge`
 
 `conda activate mt2`
 
