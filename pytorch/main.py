@@ -310,10 +310,10 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
                                                              (x_conv_teacher-winner_teacher)**2 +
                                                              (winner_student-winner_teacher)**2
                                                              )
-
+                    meters.update('cons_loss', consistency_loss.data)
             else:
                 consistency_loss = 0 # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
-            meters.update('cons_loss', consistency_loss.data)
+                meters.update('cons_loss', 0)
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
@@ -478,4 +478,5 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     #print(args)
+    args.batch_size = 100
     main(RunContext(__file__, 0), args)
