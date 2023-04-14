@@ -104,7 +104,7 @@ def main(context, args):
     som = None
     use_som = False
     if True: #args.som_loss:
-        som = SOM(8, 8, 128, n_epoch=20)
+        som = SOM(8, 8, 384, n_epoch=20)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
