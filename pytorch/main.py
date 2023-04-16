@@ -110,7 +110,7 @@ def main(context, args):
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
         if True: # args.som_loss
-            som.train(model_x_convs,   # Matrix of inputs - each column is one input vector
+            som.train(model_x_convs.detach().T.cpu().numpy(),   # Matrix of inputs - each column is one input vector
               eps=5,  # Number of epochs
               alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
               discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
@@ -118,7 +118,7 @@ def main(context, args):
               live_plot=False, live_plot_interval=10,  # Draw plots dring training process
               logs = True)
 
-            som.train(ema_x_convs,  # Matrix of inputs - each column is one input vector
+            som.train(ema_x_convs.T.detach().cpu().numpy(),  # Matrix of inputs - each column is one input vector
                       eps=5,  # Number of epochs
                       alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
                       discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
@@ -386,7 +386,7 @@ def validate(eval_loader, model, log, global_step, epoch):
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         # compute output
-        output1, output2 = model(input_var)
+        output1, output2, output_conv = model(input_var)
         softmax1, softmax2 = F.softmax(output1, dim=1), F.softmax(output2, dim=1)
         class_loss = class_criterion(output1, target_var) / minibatch_size
 
