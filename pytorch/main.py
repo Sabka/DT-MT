@@ -27,7 +27,7 @@ from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from mean_teacher.run_context import RunContext
 from mean_teacher.data import NO_LABEL
 from mean_teacher.utils import *
-
+from my_som import SOM, L_1
 
 LOG = logging.getLogger('main')
 
@@ -98,11 +98,36 @@ def main(context, args):
         validate(eval_loader, ema_model, ema_validation_log, global_step, args.start_epoch)
         return
 
+    som = None
+    use_som = False
+    if True: # args.som_loss
+        som = SOM(384, 5, 5)
+
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        train(train_loader, model, ema_model, optimizer, epoch, training_log)
+        model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log, som, use_som)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
+
+        if True: # args.som_loss
+            som.train(model_x_convs,   # Matrix of inputs - each column is one input vector
+              eps=5,  # Number of epochs
+              alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
+              discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
+              grid_metric= L_1,  # Grid distance metric
+              live_plot=False, live_plot_interval=10,  # Draw plots dring training process
+              logs = True)
+
+            som.train(ema_x_convs,  # Matrix of inputs - each column is one input vector
+                      eps=5,  # Number of epochs
+                      alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
+                      discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
+                      grid_metric=L_1,  # Grid distance metric
+                      live_plot=False, live_plot_interval=10,  # Draw plots dring training process
+                      logs=True)
+
+            use_som = True
+            print("SOM trained on new x_convs")
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -193,7 +218,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
         ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
 
-def train(train_loader, model, ema_model, optimizer, epoch, log):
+def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
     global global_step
 
     class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
@@ -210,6 +235,9 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
     # switch to train mode
     model.train()
     ema_model.train()
+
+    ema_model_x_convs = None
+    model_x_convs = None
 
     end = time.time()
     for i, ((input, ema_input), target) in enumerate(train_loader):
@@ -228,8 +256,20 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         assert labeled_minibatch_size > 0
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
-        ema_model_out = ema_model(ema_input_var)
-        model_out = model(input_var)
+        ema_model_out1, ema_model_out2, ema_model_x_conv = ema_model(ema_input_var)
+        ema_model_out = (ema_model_out1, ema_model_out2)
+        model_out1, model_out2, model_x_conv = model(input_var)
+        model_out = (model_out1, model_out2)
+        # print(ema_model_x_conv.shape, model_x_conv.shape)
+        # take x convs to one tensor
+        if model_x_convs == None:
+            model_x_convs = model_x_conv
+        else:
+            model_x_convs = torch.cat((model_x_convs, model_x_conv), 0)
+        if ema_model_x_convs == None:
+            ema_model_x_convs = ema_model_x_conv
+        else:
+            ema_model_x_convs = torch.cat((ema_model_x_convs, ema_model_x_conv), 0)
 
         if isinstance(model_out, Variable):
             assert args.logit_distance_cost < 0
@@ -260,8 +300,23 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
-            consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
-            meters.update('cons_loss', consistency_loss.data)
+            if True and use_som:  # TODO args.som_loss:
+                for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
+
+                    bmu_loc = som.winner(x_conv_student)
+                    winner_student = som.weights[bmu_loc]
+
+                    bmu_loc = som.winner(x_conv_teacher)
+                    winner_teacher =  som.weights[bmu_loc]
+
+                    consistency_loss += consistency_weight * ((x_conv_student - winner_student) ** 2 +
+                                                              (x_conv_teacher - winner_teacher) ** 2 +
+                                                              (winner_student - winner_teacher) ** 2
+                                                              )
+                    meters.update('cons_loss', consistency_loss.data)
+            else:
+                consistency_loss = 0  # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
+                meters.update('cons_loss', 0)
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
@@ -309,7 +364,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             #    **meters.averages(),
             #    **meters.sums()
             #})
-
+    return model_x_convs, ema_model_x_convs
 
 def validate(eval_loader, model, log, global_step, epoch):
     class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
