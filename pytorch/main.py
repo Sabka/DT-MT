@@ -301,8 +301,10 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
             if True and use_som:  # TODO args.som_loss:
-                for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
-
+                consistency_loss = 0
+                for x_conv_student_tensor, x_conv_teacher_tensor in zip(model_x_conv, ema_model_x_conv):
+                    
+                    x_conv_student, x_conv_teacher = x_conv_student_tensor.detach().cpu().numpy(), x_conv_teacher_tensor.detach().cpu().numpy() 
                     bmu_loc = som.winner(x_conv_student)
                     winner_student = som.weights[bmu_loc]
 
@@ -313,13 +315,14 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
                                                               (x_conv_teacher - winner_teacher) ** 2 +
                                                               (winner_student - winner_teacher) ** 2
                                                               )
-                    meters.update('cons_loss', consistency_loss.data)
+                    meters.update('cons_loss', consistency_loss)
             else:
                 consistency_loss = 0  # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', 0)
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
+
 
         loss = class_loss + consistency_loss + res_loss
         #assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
