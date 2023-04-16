@@ -116,6 +116,7 @@ def main(context, args):
             som.fit(model_x_convs, batch_size=100)
             som.fit(ema_x_convs, batch_size=100)
             use_som = True
+            print("SOM trained on new x_convs")
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
