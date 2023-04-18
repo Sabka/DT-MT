@@ -27,7 +27,7 @@ from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from mean_teacher.run_context import RunContext
 from mean_teacher.data import NO_LABEL
 from mean_teacher.utils import *
-from my_som import SOM, L_1
+from my_som import SOM
 
 LOG = logging.getLogger('main')
 
@@ -101,7 +101,7 @@ def main(context, args):
     som = None
     use_som = False
     if True: # args.som_loss
-        som = SOM(384, 5, 5)
+        som = SOM(5, 5, 384, 10)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
@@ -110,21 +110,9 @@ def main(context, args):
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
         if True: # args.som_loss
-            som.train(model_x_convs,   # Matrix of inputs - each column is one input vector
-              eps=5,  # Number of epochs
-              alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
-              discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
-              grid_metric= L_1,  # Grid distance metric
-              live_plot=False, live_plot_interval=10,  # Draw plots dring training process
-              logs = True)
-
-            som.train(ema_x_convs,  # Matrix of inputs - each column is one input vector
-                      eps=5,  # Number of epochs
-                      alpha_s=0.01, alpha_f=0.001, lambda_s=5, lambda_f=1,  # Start & end values for alpha & lambda
-                      discrete_neighborhood=True,  # Use discrete or continuous (gaussian) neighborhood function
-                      grid_metric=L_1,  # Grid distance metric
-                      live_plot=False, live_plot_interval=10,  # Draw plots dring training process
-                      logs=True)
+            som.train()
+            som(model_x_convs, epoch)
+            som(ema_x_convs, epoch)
 
             use_som = True
             print("SOM trained on new x_convs")
@@ -303,10 +291,10 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
             if True and use_som:  # TODO args.som_loss:
                 for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
 
-                    bmu_loc = som.winner(x_conv_student)
+                    bmu_loc = som.bmu_loc(x_conv_student)
                     winner_student = som.weights[bmu_loc]
 
-                    bmu_loc = som.winner(x_conv_teacher)
+                    bmu_loc = som.bmu_loc(x_conv_teacher)
                     winner_teacher =  som.weights[bmu_loc]
 
                     consistency_loss += consistency_weight * ((x_conv_student - winner_student) ** 2 +
