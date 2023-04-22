@@ -471,4 +471,5 @@ if __name__ == '__main__':
     print(f"==> Using device {args.device}")
     print(args)
     args.batch_size = 100
+    args.arch = 'cifar_sarmad'
     main(RunContext(__file__, 0), args)
