@@ -7,9 +7,7 @@
     <list default="true" id="bd3a00a2-8e29-4259-be4e-369201408dd5" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pytorch/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pytorch/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pytorch/mean_teacher/architectures.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/mean_teacher/architectures.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pytorch/my_som.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/my_som.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +105,7 @@
       <workItem from="1681052832960" duration="1665000" />
       <workItem from="1681479612954" duration="4679000" />
       <workItem from="1681637862225" duration="6509000" />
-      <workItem from="1682148515569" duration="13269000" />
+      <workItem from="1682148515569" duration="14583000" />
     </task>
     <servers />
   </component>

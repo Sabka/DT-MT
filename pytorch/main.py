@@ -292,27 +292,28 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
             if args.som_loss and use_som:
-                winners_student = torch.empty((args.batch_size), 128).to(args.device)
-                winners_teacher = torch.empty((args.batch_size), 128).to(args.device)
-                for ind, (x_conv_student, x_conv_teacher) in enumerate(zip(model_x_conv, ema_model_x_conv)):
+                with torch.no_grad():
+                    winners_student = torch.empty((args.batch_size), 128).to(args.device)
+                    winners_teacher = torch.empty((args.batch_size), 128).to(args.device)
+                    for ind, (x_conv_student, x_conv_teacher) in enumerate(zip(model_x_conv, ema_model_x_conv)):
 
-                    _, bmu_loc_1D = som.bmu_loc(x_conv_student)
-                    winner_student = som.weights[bmu_loc_1D]
+                        _, bmu_loc_1D = som.bmu_loc(x_conv_student)
+                        winner_student = som.weights[bmu_loc_1D]
 
-                    _, bmu_loc_1D = som.bmu_loc(x_conv_teacher)
-                    winner_teacher = som.weights[bmu_loc_1D]
-
-
-                    winners_student[ind] = winner_student
-                    winners_teacher[ind] = winner_teacher
+                        _, bmu_loc_1D = som.bmu_loc(x_conv_teacher)
+                        winner_teacher = som.weights[bmu_loc_1D]
 
 
-                consistency_loss = torch.sum(torch.pow(model_x_conv - winners_student, 2))
-                consistency_loss += torch.sum(torch.pow(ema_model_x_conv - winners_teacher, 2))
-                consistency_loss += torch.sum(torch.pow(winners_student - winners_teacher, 2))
-                consistency_loss *= consistency_weight
+                        winners_student[ind] = winner_student
+                        winners_teacher[ind] = winner_teacher
 
-                meters.update('cons_loss', consistency_loss.data)
+
+                    consistency_loss = torch.sum(torch.pow(model_x_conv - winners_student, 2))
+                    consistency_loss += torch.sum(torch.pow(ema_model_x_conv - winners_teacher, 2))
+                    consistency_loss += torch.sum(torch.pow(winners_student - winners_teacher, 2))
+                    consistency_loss *= consistency_weight
+
+                    meters.update('cons_loss', consistency_loss.data)
             else:
                 consistency_loss = 0  # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', 0)
