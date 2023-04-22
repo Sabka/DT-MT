@@ -301,7 +301,9 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
 
                     bmu_loc = som.bmu_loc(x_conv_teacher)
                     winner_teacher = som.weights[bmu_loc]
+                    
 
+                    print(bmu_loc, winners_student.shape, winner_student.shape)
                     winners_student[ind] = winner_student
                     winners_teacher[ind] = winner_teacher
 
