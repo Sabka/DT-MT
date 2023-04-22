@@ -9,6 +9,7 @@
       <change beforePath="$PROJECT_DIR$/pytorch/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pytorch/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pytorch/mean_teacher/architectures.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/mean_teacher/architectures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pytorch/my_som.py" beforeDir="false" afterPath="$PROJECT_DIR$/pytorch/my_som.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -106,7 +107,7 @@
       <workItem from="1681052832960" duration="1665000" />
       <workItem from="1681479612954" duration="4679000" />
       <workItem from="1681637862225" duration="6509000" />
-      <workItem from="1682148515569" duration="11948000" />
+      <workItem from="1682148515569" duration="13269000" />
     </task>
     <servers />
   </component>
@@ -114,6 +115,15 @@
     <option name="version" value="3" />
   </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/pytorch/main.py</url>
+          <line>294</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="Variable" />
@@ -121,6 +131,6 @@
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/DT_MT$main.coverage" NAME="main Coverage Results" MODIFIED="1682176750828" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pytorch" />
+    <SUITE FILE_PATH="coverage/DT_MT$main.coverage" NAME="main Coverage Results" MODIFIED="1682180343997" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/pytorch" />
   </component>
 </project>

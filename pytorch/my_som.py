@@ -58,12 +58,12 @@ class SOM(nn.Module):
         bmu_loc = self.locations[bmu_index, :]
         bmu_loc = bmu_loc.squeeze()
 
-        return bmu_loc
+        return bmu_loc, bmu_loc[0] * self.m + bmu_loc[1]
 
 
     def forward(self, x, it):
 
-        bmu_loc = self.bmu_loc(x)
+        bmu_loc, _ = self.bmu_loc(x)
 
 
         learning_rate_op = 1.0 - it / self.niter

@@ -296,12 +296,12 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
                 winners_teacher = torch.empty((args.batch_size), 128).to(args.device)
                 for ind, (x_conv_student, x_conv_teacher) in enumerate(zip(model_x_conv, ema_model_x_conv)):
 
-                    bmu_loc = som.bmu_loc(x_conv_student)
-                    winner_student = som.weights[bmu_loc]
+                    _, bmu_loc_1D = som.bmu_loc(x_conv_student)
+                    winner_student = som.weights[bmu_loc_1D]
 
-                    bmu_loc = som.bmu_loc(x_conv_teacher)
-                    winner_teacher = som.weights[bmu_loc]
-                    
+                    _, bmu_loc_1D = som.bmu_loc(x_conv_teacher)
+                    winner_teacher = som.weights[bmu_loc_1D]
+
 
                     winners_student[ind] = winner_student
                     winners_teacher[ind] = winner_teacher
@@ -478,6 +478,6 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     print(args)
-    args.batch_size = 400
+    args.batch_size = 100
     args.arch = 'cifar_sarmad'
     main(RunContext(__file__, 0), args)
