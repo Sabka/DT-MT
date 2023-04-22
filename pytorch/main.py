@@ -100,7 +100,7 @@ def main(context, args):
 
     som = None
     use_som = False
-    if True: # args.som_loss
+    if args.som_loss:
         som = SOM(5, 5, 128, 10, args).to(args.device)
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -109,7 +109,7 @@ def main(context, args):
         model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log, som, use_som)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
-        if True: # args.som_loss
+        if args.som_loss:
             som.train()
             for i in model_x_convs.to(args.device):
                 som(i, epoch)
@@ -291,7 +291,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
-            if True and use_som:  # TODO args.som_loss:
+            if args.som_loss and use_som:
                 winners_student = torch.empty((args.batch_size), 128).to(args.device)
                 winners_teacher = torch.empty((args.batch_size), 128).to(args.device)
                 for ind, (x_conv_student, x_conv_teacher) in enumerate(zip(model_x_conv, ema_model_x_conv)):
@@ -478,6 +478,7 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     print(args)
-    args.batch_size = 100
+    args.batch_size = 512
     args.arch = 'cifar_sarmad'
+    args.som_loss = True
     main(RunContext(__file__, 0), args)
