@@ -8,8 +8,9 @@ class SOM(nn.Module):
     and linearly decreasing learning rate.
     """
 
-    def __init__(self, m, n, dim, niter, alpha=None, sigma=None):
+    def __init__(self, m, n, dim, niter, args, alpha=None, sigma=None):
         super(SOM, self).__init__()
+        self.args = args
         self.m = m
         self.n = n
         self.dim = dim
@@ -23,7 +24,7 @@ class SOM(nn.Module):
         else:
             self.sigma = float(sigma)
 
-        self.weights = torch.randn(m * n, dim)
+        self.weights = torch.randn(m * n, dim).to(self.args.device)
         self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
 
@@ -48,11 +49,16 @@ class SOM(nn.Module):
         return to_return
 
     def bmu_loc(self, x):
-
-        dists = self.pdist(torch.stack([x for i in range(self.m * self.n)]), self.weights)
+        
+        #print(self.weights.get_device())
+        x_matrix = torch.stack([x for i  in range(self.m * self.n)]).to(self.args.device)
+        #print(x_matrix.get_device())
+        dists = self.pdist(x_matrix, self.weights)
         _, bmu_index = torch.min(dists, 0)
         bmu_loc = self.locations[bmu_index, :]
         bmu_loc = bmu_loc.squeeze()
+
+        return bmu_loc
 
 
     def forward(self, x, it):
@@ -64,8 +70,12 @@ class SOM(nn.Module):
         alpha_op = self.alpha * learning_rate_op
         sigma_op = self.sigma * learning_rate_op
 
-        bmu_distance_squares = torch.sum(
-            torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
+        tmp = torch.stack([bmu_loc for i in range(self.m * self.n)])
+        tmp = self.locations.float() - tmp.float()
+        tmp = torch.pow(tmp, 2)
+        bmu_distance_squares = torch.sum(tmp, 1)
+        #bmu_distance_squares = torch.sum(
+        #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
         neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, sigma_op ** 2)))
 
@@ -73,7 +83,7 @@ class SOM(nn.Module):
 
         learning_rate_multiplier = torch.stack(
             [learning_rate_op[i:i + 1].repeat(self.dim) for i in range(self.m * self.n)])
-        delta = torch.mul(learning_rate_multiplier, (torch.stack([x for i in range(self.m * self.n)]) - self.weights))
+        delta = torch.mul(learning_rate_multiplier.to(self.args.device), (torch.stack([x for i in range(self.m * self.n)]).to(self.args.device) - self.weights))
         new_weights = torch.add(self.weights, delta)
         self.weights = new_weights
 

@@ -101,7 +101,7 @@ def main(context, args):
     som = None
     use_som = False
     if True: # args.som_loss
-        som = SOM(5, 5, 384, 10)
+        som = SOM(5, 5, 384, 10, args).to(args.device)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
@@ -111,8 +111,10 @@ def main(context, args):
 
         if True: # args.som_loss
             som.train()
-            som(model_x_convs, epoch)
-            som(ema_x_convs, epoch)
+            for i in model_x_convs.to(args.device):
+                som(i, epoch)
+            for j in ema_x_convs.to(args.device):
+                som(j, epoch)
 
             use_som = True
             print("SOM trained on new x_convs")
@@ -203,13 +205,14 @@ def update_ema_variables(model, ema_model, alpha, global_step):
     # Use the true average until the exponential average is more correct
     alpha = min(1 - 1 / (global_step + 1), alpha)
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        ema_param.data.mul_(alpha)
+        ema_param.data = torch.add( ema_param.data, param.data, alpha = 1-alpha)
 
 
 def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
     global global_step
 
-    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
+    class_criterion = nn.CrossEntropyLoss(reduction='sum', ignore_index=NO_LABEL).to(args.device)
     if args.consistency_type == 'mse':
         consistency_criterion = losses.softmax_mse_loss
     elif args.consistency_type == 'kl':
@@ -374,7 +377,7 @@ def validate(eval_loader, model, log, global_step, epoch):
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         # compute output
-        output1, output2 = model(input_var)
+        output1, output2, x_conv = model(input_var)
         softmax1, softmax2 = F.softmax(output1, dim=1), F.softmax(output2, dim=1)
         class_loss = class_criterion(output1, target_var) / minibatch_size
 
@@ -467,4 +470,5 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     print(args)
+    args.batch_size = 100
     main(RunContext(__file__, 0), args)
