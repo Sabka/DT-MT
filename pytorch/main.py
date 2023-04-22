@@ -101,7 +101,7 @@ def main(context, args):
     som = None
     use_som = False
     if True: # args.som_loss
-        som = SOM(5, 5, 384, 10, args).to(args.device)
+        som = SOM(5, 5, 128, 10, args).to(args.device)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
@@ -291,6 +291,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
+            consistency_loss = 0
             if True and use_som:  # TODO args.som_loss:
                 for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
 
@@ -470,6 +471,6 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     print(args)
-    args.batch_size = 100
+    args.batch_size = 400
     args.arch = 'cifar_sarmad'
     main(RunContext(__file__, 0), args)
