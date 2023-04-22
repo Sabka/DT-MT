@@ -291,8 +291,9 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
-            consistency_loss = 0
             if True and use_som:  # TODO args.som_loss:
+                winners_student = torch.empty().to(args.device)
+                winners_teacher = torch.empty().to(args.device)
                 for x_conv_student, x_conv_teacher in zip(model_x_conv, ema_model_x_conv):
 
                     bmu_loc = som.bmu_loc(x_conv_student)
@@ -301,11 +302,16 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
                     bmu_loc = som.bmu_loc(x_conv_teacher)
                     winner_teacher =  som.weights[bmu_loc]
 
-                    consistency_loss += consistency_weight * ((x_conv_student - winner_student) ** 2 +
-                                                              (x_conv_teacher - winner_teacher) ** 2 +
-                                                              (winner_student - winner_teacher) ** 2
-                                                              )
-                    meters.update('cons_loss', consistency_loss.data)
+                    winners_student.cat(winners_student, winner_student)
+                    winners_teacher.cat(winners_teacher, winner_teacher)
+
+
+                consistency_loss = torch.sum(torch.pow(model_x_conv - winners_student, 2))
+                consistency_loss += torch.sum(torch.pow(ema_model_x_conv - winners_teacher, 2))
+                consistency_loss += torch.sum(torch.pow(winners_student - winners_teacher, 2))
+                consistency_loss *= consistency_weight
+
+                meters.update('cons_loss', consistency_loss.data)
             else:
                 consistency_loss = 0  # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', 0)
