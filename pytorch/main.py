@@ -108,7 +108,7 @@ def main(context, args):
         # train for one epoch
         model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log, som, use_som)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
-        print(torch.max(model.conv2a))
+        # print(torch.max(model.conv2a))
 
         if args.som_loss:
             som.train()
