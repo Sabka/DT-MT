@@ -168,7 +168,7 @@ def create_data_loaders(train_transformation,
     traindir = os.path.join(datadir, args.train_subdir)
     evaldir = os.path.join(datadir, args.eval_subdir)
 
-    assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
+    # assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
 
     dataset = torchvision.datasets.ImageFolder(traindir, train_transformation)
 
@@ -316,8 +316,8 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
 
                     meters.update('cons_loss', consistency_loss.data)
             else:
-                consistency_loss = 0  # consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
-                meters.update('cons_loss', 0)
+                consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
+                meters.update('cons_loss', consistency_loss)
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
@@ -482,5 +482,5 @@ if __name__ == '__main__':
     print(args)
     args.batch_size = 512
     args.arch = 'cifar_sarmad'
-    args.som_loss = True
+    args.som_loss = False #True
     main(RunContext(__file__, 0), args)
