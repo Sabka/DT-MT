@@ -72,7 +72,14 @@ for epoch in range(3):
             with torch.no_grad():
                 som(x_c, epoch)
             #print('train', torch.max(som.get_weights()))
-    print(epoch)
+    
+    quant_err = 0
+    for x_c in loaded_data:
+        _, bmu_loc_1D = som.bmu_loc(x_c)
+        winner = som.weights[bmu_loc_1D]
+        quant_err += torch.min(torch.abs(x_c - winner))
+    quant_err /= 1
+    print(f"Epoch {epoch+1}, quant err {quant_err}")
    
    
 # PREDICTION 
