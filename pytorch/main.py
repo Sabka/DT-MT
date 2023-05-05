@@ -112,10 +112,11 @@ def main(context, args):
 
         if args.som_loss:
             som.train()
-            for i in model_x_convs.to(args.device):
-                som(i, epoch)
-            for j in ema_x_convs.to(args.device):
-                som(j, epoch)
+            with torch.no_grad():
+                for i in model_x_convs.to(args.device):
+                    som(i, epoch)
+                for j in ema_x_convs.to(args.device):
+                    som(j, epoch)
 
             use_som = True
             print("SOM trained on new x_convs")
@@ -482,5 +483,5 @@ if __name__ == '__main__':
     print(args)
     args.batch_size = 512
     args.arch = 'cifar_sarmad'
-    args.som_loss = False #True
+    args.som_loss = True
     main(RunContext(__file__, 0), args)
