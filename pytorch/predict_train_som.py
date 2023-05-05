@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import main
 from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from my_som import SOM
+import random
 
 
 class model_params:
@@ -57,32 +58,41 @@ class_criterion = nn.CrossEntropyLoss(size_average=False).to(device)
 model.eval()
 
 loaded_data = []
-som = SOM(5, 5, 128, 10, hyparams).to(device)
-som.train()
+with torch.no_grad():
+    for i, (input, target) in enumerate(eval_loader):
+            input_var = torch.autograd.Variable(input)
+            target_var = torch.autograd.Variable(target.to(device))
+            minibatch_size = len(target_var)
+            output1, output2, x_conv = model(input_var)
+            for x_c in x_conv:
+                loaded_data.append(x_c)
+
+
+
+som = SOM(8, 8, 128, 100, hyparams).to(device)
 
 
 # SOM training
-for epoch in range(3):
-    for i, (input, target) in enumerate(eval_loader):
-        input_var = torch.autograd.Variable(input)
-        target_var = torch.autograd.Variable(target.to(device))
-        minibatch_size = len(target_var)
-        output1, output2, x_conv = model(input_var)
-        for x_c in x_conv:
-            with torch.no_grad():
-                som(x_c, epoch)
+for epoch in range(100):
+    som.train()
+    random.shuffle(loaded_data)
+    for x_c in loaded_data:
+        with torch.no_grad():
+            som(x_c, epoch)
             #print('train', torch.max(som.get_weights()))
     
+    som.eval()
     quant_err = 0
     for x_c in loaded_data:
         _, bmu_loc_1D = som.bmu_loc(x_c)
         winner = som.weights[bmu_loc_1D]
         quant_err += torch.min(torch.abs(x_c - winner))
-    quant_err /= 1
+    quant_err /= 5000
     print(f"Epoch {epoch+1}, quant err {quant_err}")
    
    
 # PREDICTION 
+som.eval()
 d = {}
 for i, (input, target) in enumerate(eval_loader):
     input_var = torch.autograd.Variable(input)
