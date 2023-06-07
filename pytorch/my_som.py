@@ -60,11 +60,9 @@ class SOM(nn.Module):
 
         return bmu_loc, bmu_loc[0] * self.m + bmu_loc[1]
 
-
     def forward(self, x, it):
 
         bmu_loc, _ = self.bmu_loc(x)
-
 
         learning_rate_op = 1.0 - it / self.niter
         alpha_op = self.alpha * learning_rate_op
@@ -74,6 +72,7 @@ class SOM(nn.Module):
         tmp = self.locations.float() - tmp.float()
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
+        print(f"Quant err: {torch.sum(bmu_distance_squares)}")
         #bmu_distance_squares = torch.sum(
         #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
