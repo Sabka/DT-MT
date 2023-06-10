@@ -110,16 +110,16 @@ def main(context, args):
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
         # print(torch.max(model.conv2a))
 
-        if args.som_loss:
+        if epoch >= 5: # supervised pretraining constant
+            use_som = True
+
+        if args.som_loss and use_som:
             som.train()
             with torch.no_grad():
                 for i in model_x_convs.to(args.device):
                     som(i, epoch)
                 for j in ema_x_convs.to(args.device):
                     som(j, epoch)
-
-            if epoch >= 10:
-                use_som = True
             print(f"SOM trained on new x_convs, quant error: {som.get_quant_err()}")
 
 

@@ -28,7 +28,7 @@ class SOM(nn.Module):
         self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
         self.quant_err = 0
-        self_num_err = 0
+        self.num_err = 0
 
     def get_weights(self):
         return self.weights
