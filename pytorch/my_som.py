@@ -48,12 +48,11 @@ class SOM(nn.Module):
         quant_err = self.quant_err/self.num_err
         winner_discrimination = sum(tmp > 0 for tmp in self.winner_occurences) / self.num_err
 
-        px = self.winner_occurences / self.num_err
+        px = torch.FloatTensor([x/self.num_err for x in self.winner_occurences])
         logpx = torch.log(px)
         product = px * logpx
         entropy = - torch.sum(product)
-        print(px.shape, logpx.shape, product.shape, entropy.shape)
-
+        
         self.quant_err = 0
         self.num_err = 0
 

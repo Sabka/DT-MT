@@ -110,7 +110,7 @@ def main(context, args):
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
         # print(torch.max(model.conv2a))
 
-        if epoch >= 5: # supervised pretraining constant
+        if epoch >= 0: # supervised pretraining constant
             use_som = True
 
         if args.som_loss and use_som:
