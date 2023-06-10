@@ -48,6 +48,7 @@ class SOM(nn.Module):
         
         self.quant_err = 0
         self.num_err = 0
+        self.winner_occurences = [0 for i in range(self.m*self.n)]
 
         return quant_err, winner_discrimination, entropy
 
@@ -101,10 +102,6 @@ class SOM(nn.Module):
         tmp = self.locations.float() - tmp.float()
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
-
-
-        #bmu_distance_squares = torch.sum(
-        #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
         neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, sigma_op ** 2)))
 
