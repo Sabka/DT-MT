@@ -70,7 +70,16 @@ class SOM(nn.Module):
 
     def forward(self, x, it):
 
-        bmu_loc, _ = self.bmu_loc(x)
+        """ Take one input x and find location of its BMU in 2D net,
+            then calculate distances of all neurons to this BMU and
+            update their positions. """
+
+        bmu_loc, bmu_loc_1D = self.bmu_loc(x)
+
+        # calculate distance of bmu position in ND space and x
+        winner = self.weights[bmu_loc_1D]
+        self.quant_err += torch.sum(torch.pow(x - winner, 2))
+        self.num_err += 1
 
         learning_rate_op = 1.0 - it / self.niter
         alpha_op = self.alpha * learning_rate_op
@@ -80,8 +89,8 @@ class SOM(nn.Module):
         tmp = self.locations.float() - tmp.float()
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
-        self.quant_err += torch.sum(bmu_distance_squares)
-        self.num_err += 1
+
+
         #bmu_distance_squares = torch.sum(
         #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
