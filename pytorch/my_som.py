@@ -29,6 +29,7 @@ class SOM(nn.Module):
         self.pdist = nn.PairwiseDistance(p=2)
         self.quant_err = 0
         self.num_err = 0
+        self.winner_occurences = [0 for i in range(self.m*self.n)]
 
     def get_weights(self):
         return self.weights
@@ -41,6 +42,23 @@ class SOM(nn.Module):
         self.quant_err = 0
         self.num_err = 0
         return tmp
+
+    def get_som_stats(self):
+
+        quant_err = self.quant_err/self.num_err
+        winner_discrimination = sum(tmp > 0 for tmp in self.winner_occurences) / self.num_err
+
+        px = self.winner_occurences / self.num_err
+        logpx = torch.log(px)
+        product = px * logpx
+        entropy = - torch.sum(product)
+        print(px.shape, logpx.shape, product.shape, entropy.shape)
+
+        self.quant_err = 0
+        self.num_err = 0
+
+        return quant_err, winner_discrimination, entropy
+
 
     def neuron_locations(self):
         for i in range(self.m):
@@ -80,6 +98,9 @@ class SOM(nn.Module):
         winner = self.weights[bmu_loc_1D]
         self.quant_err += torch.sum(torch.pow(x - winner, 2))
         self.num_err += 1
+
+        # calculate winner occurences for stats
+        self.winner_occurences[bmu_loc_1D] += 1
 
         learning_rate_op = 1.0 - it / self.niter
         alpha_op = self.alpha * learning_rate_op

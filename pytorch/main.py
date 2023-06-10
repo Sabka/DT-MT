@@ -120,7 +120,7 @@ def main(context, args):
                     som(i, epoch)
                 for j in ema_x_convs.to(args.device):
                     som(j, epoch)
-            print(f"SOM trained on new x_convs, quant error: {som.get_quant_err()}")
+            print(f"SOM trained on new x_convs, stats: {som.get_som_stats()}")
 
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
