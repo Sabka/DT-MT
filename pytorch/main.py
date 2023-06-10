@@ -120,7 +120,8 @@ def main(context, args):
 
             if epoch >= 10:
                 use_som = True
-            print("SOM trained on new x_convs")
+            print(f"SOM trained on new x_convs, quant error: {som.get_quant_err()}")
+
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()

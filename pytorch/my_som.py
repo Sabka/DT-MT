@@ -27,12 +27,20 @@ class SOM(nn.Module):
         self.weights = torch.randn(m * n, dim).to(self.args.device)
         self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
+        self.quant_err = 0
+        self_num_err = 0
 
     def get_weights(self):
         return self.weights
 
     def get_locations(self):
         return self.locations
+
+    def get_quant_err(self):
+        tmp = self.quant_err/self.num_err
+        self.quant_err = 0
+        self.num_err = 0
+        return tmp
 
     def neuron_locations(self):
         for i in range(self.m):
@@ -72,7 +80,8 @@ class SOM(nn.Module):
         tmp = self.locations.float() - tmp.float()
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
-        print(f"Quant err: {torch.sum(bmu_distance_squares)}")
+        self.quant_err += torch.sum(bmu_distance_squares)
+        self.num_err += 1
         #bmu_distance_squares = torch.sum(
         #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
