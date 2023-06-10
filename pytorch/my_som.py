@@ -36,13 +36,6 @@ class SOM(nn.Module):
 
     def get_locations(self):
         return self.locations
-
-    def get_quant_err(self):
-        tmp = self.quant_err/self.num_err
-        self.quant_err = 0
-        self.num_err = 0
-        return tmp
-
     def get_som_stats(self):
 
         quant_err = self.quant_err/self.num_err
@@ -57,7 +50,6 @@ class SOM(nn.Module):
         self.num_err = 0
 
         return quant_err, winner_discrimination, entropy
-
 
     def neuron_locations(self):
         for i in range(self.m):
