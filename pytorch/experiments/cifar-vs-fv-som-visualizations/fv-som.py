@@ -351,8 +351,9 @@ print(f"FV created in {tm() - t} seconds")
 # training SOM
 
 EPS = 100
+n = 8
 
-som = SOM(8, 8, 128, EPS, {}).to(device)
+som = SOM(n, n, 128, EPS, {}).to(device)
 som.train()
 
 all_quant = []
@@ -381,8 +382,8 @@ for ep in range(EPS):
     print(f"SOM trained on feature vectors, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
 
     if ep % 1 == 0:
-      show_umatrix(8, 8, som.d, 0, f"figs/fv-{ep}ep.png")
-      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/fv-{ep}ep-stat.png")
+      show_umatrix(8, 8, som.d, 0, f"figs/fv-{n}n-{ep}ep.png")
+      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/fv-{n}n-{ep}ep-stat.png")
       print(som.d)
 
     # ds.append(som.d)

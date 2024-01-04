@@ -260,7 +260,7 @@ def show_umatrix(n, m, d, offset = 0, name="tmp"):
     # plt.colorbar()
     plt.title(f'CIFAR10 dataset classes {n}x{m}')
     # plt.show()
-    plt.savefig(name)
+    plt.savefig(name, bbox_inches='tight')
 
 def show_som_stats(all_quant, all_winner, all_entr, all_dist = [], name="tmp"):
 
@@ -284,12 +284,13 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist = [], name="tmp"):
   plt.tight_layout()
 
   # plt.show()
-  plt.savefig(name)
+  plt.savefig(name, bbox_inches='tight')
 
 from time import time as tm
 EPS = 100
+n = 8
 
-som = SOM(8, 8, 3*32*32, EPS, {})
+som = SOM(n, n, 3*32*32, EPS, {})
 som.train()
 
 all_quant = []
@@ -319,8 +320,8 @@ for ep in range(EPS):
     print(f"SOM trained on datapoints, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
 
     if ep % 1 == 0:
-      show_umatrix(8, 8, som.d, 0, f"figs/cifar10-{ep}ep.png")
-      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{ep}ep-stat.png")
+      show_umatrix(8, 8, som.d, 0, f"figs/cifar10-{n}n-{ep}ep.png")
+      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat.png")
       print(som.d)
 
     # ds.append(som.d)
