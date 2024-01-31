@@ -5,9 +5,13 @@ import torchvision.transforms as transforms
 from torch import nn
 import numpy as np
 from matplotlib import pyplot as plt
-import main
+
+import sys
+sys.path.insert(1, '../../') # path to mt
+
 from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from time import time as tm
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(device)
@@ -279,7 +283,7 @@ class data_params:
 
 
 ds_name = 'cifar10'
-checkpoint_path = "results/best.ckpt"
+checkpoint_path = "best.ckpt"
 if torch.cuda.is_available():
   device = "cuda:0"
 else:
@@ -351,40 +355,42 @@ print(f"FV created in {tm() - t} seconds")
 # training SOM
 
 EPS = 100
-n = 8
+for n in [6, 7, 9, 10]:
+# n = 8
 
-som = SOM(n, n, 128, EPS, {}).to(device)
-som.train()
+  som = SOM(n, n, 128, EPS, {}).to(device)
+  som.train()
 
-all_quant = []
-all_winner = []
-all_entr = []
+  all_quant = []
+  all_winner = [] 
+  all_entr = []
 
-ds = []
+  ds = []
 
-t = tm()
-for ep in range(EPS):
-    som.d = {}
-    print(f"Epoch: {ep+1}", end = " : ")
-    with torch.no_grad():
-      for i, x_c in enumerate(loaded_data, 0):
-        if i % 1000 == 0:
-          print(f"{i} / {len(loaded_data)}, time: {tm() - t}")
-        
-        input, label = x_c
-        input = input.view(-1)
-        som(input, label, ep)
+  t = tm()
+  for ep in range(EPS):
+      som.d = {}
+      print(f"Epoch: {ep+1}", end = " : ")
+      with torch.no_grad():
+        for i, x_c in enumerate(loaded_data, 0):
+          if i % 5000 == 0:
+            print(f"{i} / {len(loaded_data)}, time: {tm() - t}")
+            with open("fv-logs.log", "a") as a:
+              a.write(f"{i} / {len(loaded_data)}, n = {n}, time: {tm() - t}\n")
+          input, label = x_c
+          input = input.view(-1)
+          som(input, label, ep)
+        cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
 
 
-    cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+    # print(f"SOM trained on feature vectors, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
 
-
-    print(f"SOM trained on feature vectors, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
-
-    if ep % 1 == 0:
-      show_umatrix(8, 8, som.d, 0, f"figs/fv-{n}n-{ep}ep.png")
-      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/fv-{n}n-{ep}ep-stat.png")
-      print(som.d)
+      if ep % 5 == 4:
+        show_umatrix(n, n, som.d, 0, f"figsf/fv-{n}n-{ep}ep.png")
+        show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figsf/fv-{n}n-{ep}ep-stat.png")
+        # print(som.d)
+  with open("fv-som.log", "a") as a:
+    a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
 
     # ds.append(som.d)
 

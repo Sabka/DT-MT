@@ -69,15 +69,15 @@ class SOM(nn.Module):
         self.dim = dim
         self.niter = niter
         if alpha is None:
-            self.alpha = 0.3
+            self.alpha =  0.3
         else:
-            self.alpha = float(alpha)
+            self.alpha =  float(alpha)
         if sigma is None:
             self.sigma = max(m, n) / 2.0
         else:
             self.sigma = float(sigma)
 
-        self.weights = torch.randn(m * n, dim).to(device)
+        self.weights = nn.Parameter(torch.randn(m * n, dim).to(device))
         self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
         self.quant_err = 0
@@ -201,7 +201,7 @@ class SOM(nn.Module):
         delta = torch.mul(learning_rate_multiplier.to(device), (torch.stack([x.squeeze() for i in range(self.m * self.n)]).to(device) - self.weights))
 
         # print("self.weights: ", self.weights.shape, "delta: ", delta.shape)
-        new_weights = torch.add(self.weights, delta)
+        new_weights = nn.Parameter(torch.add(self.weights, delta))
         self.weights = new_weights
         # print("self.weights2: ", self.weights.shape)
 
@@ -289,9 +289,14 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist = [], name="tmp"):
 from time import time as tm
 EPS = 100
 n = 8
-
 som = SOM(n, n, 3*32*32, EPS, {})
 som.train()
+
+#torch.save(som, f'models/1.pt')
+#print(som.parameters())
+#for param_tensor in som.parameters():
+#    print(param_tensor, "\t", param_tensor.shape )
+#print("MODEL SAVED")
 
 all_quant = []
 all_winner = []
@@ -301,30 +306,71 @@ ds = []
 
 t = tm()
 for ep in range(EPS):
-    som.d = {}
-    print(f"Epoch: {ep+1}", end = " : ")
-    with torch.no_grad():
-      for i, data in enumerate(trainloader, 0):
-        if i % 1000 == 0:
-          print(f"{i} / {len(trainloader)}, time: {tm() - t}")
-        # Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
-        input, label = data
-        input = input.view(-1)
-        # print(input.shape, label.shape)
-        som(input, label, ep)
+  som.d = {}
+  print(f"Epoch: {ep+1}", end = " : ")
+  with torch.no_grad():
+    for i, data in enumerate(trainloader, 0):
+      if i % 5000 == 0:
+        print(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}")
+        with open("cifar-logs.log", "a") as a:
+          a.write(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}\n")
+      input, label = data
+      input = input.view(-1)
+      som(input, label, ep)
+      cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+  if ep % 5 == 4:
+    show_umatrix(n, n, som.d, 0, f"figs/saved-cifar10-{n}n-{ep}ep.png")
+    # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/saved-cifar10-{n}n-{ep}ep-stat.png")
+  if True: # 69 <= ep <= 79:
+    torch.save(som.weights, f'models/cifar10-{n}n-{ep}ep.pt')
+  with open("cifar10-som.log", "a") as a:
+    a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
+  
 
+  
+    
 
-    cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+"""
+for n in [6, 7, 9, 10]:
+# n = 8
 
+  som = SOM(n, n, 3*32*32, EPS, {})
+  som.train()
 
-    print(f"SOM trained on datapoints, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
+  all_quant = []
+  all_winner = []
+  all_entr = []
 
-    if ep % 1 == 0:
-      show_umatrix(8, 8, som.d, 0, f"figs/cifar10-{n}n-{ep}ep.png")
-      show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat.png")
-      print(som.d)
+  ds = []
+
+  t = tm()
+  for ep in range(EPS):
+      som.d = {}
+      print(f"Epoch: {ep+1}", end = " : ")
+      with torch.no_grad():
+        for i, data in enumerate(trainloader, 0):
+          if i % 5000 == 0:
+            print(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}")
+            with open("cifar-logs.log", "a") as a:
+              a.write(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}\n")
+	# Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
+          input, label = data
+          input = input.view(-1)
+	# print(input.shape, label.shape)
+          som(input, label, ep)
+      cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+      
+      # print(f"SOM trained on datapoints, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
+
+      if ep % 5 == 4:
+        show_umatrix(n, n, som.d, 0, f"figs/cifar10-{n}n-{ep}ep.png")
+        show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat.png")
+        # print(som.d)
+  with open("cifar10-som.log", "a") as a:
+    a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
 
     # ds.append(som.d)
 
 
 # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
+"""
