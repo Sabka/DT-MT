@@ -27,7 +27,7 @@ from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from mean_teacher.run_context import RunContext
 from mean_teacher.data import NO_LABEL
 from mean_teacher.utils import *
-
+from my_som import SOM
 
 LOG = logging.getLogger('main')
 
@@ -98,11 +98,31 @@ def main(context, args):
         validate(eval_loader, ema_model, ema_validation_log, global_step, args.start_epoch)
         return
 
+    som = None
+    use_som = False
+    if args.som_loss:
+        som = SOM(5, 5, 128, 30, args).to(args.device)
+
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        train(train_loader, model, ema_model, optimizer, epoch, training_log)
+        model_x_convs, ema_x_convs = train(train_loader, model, ema_model, optimizer, epoch, training_log, som, use_som)
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
+        # print(torch.max(model.conv2a))
+
+        if epoch >= 0: # supervised pretraining constant
+            use_som = True
+
+        if args.som_loss and use_som:
+            som.train()
+            with torch.no_grad():
+                for i in model_x_convs.to(args.device):
+                    som(i, epoch)
+                for j in ema_x_convs.to(args.device):
+                    som(j, epoch)
+            quant_err, winner_discrimination, entropy = som.get_som_stats()
+            print(f"SOM trained on new x_convs, quant_err: {quant_err}, winner_discrimination: {winner_discrimination}, entropy: {entropy}")
+
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -152,7 +172,7 @@ def create_data_loaders(train_transformation,
     traindir = os.path.join(datadir, args.train_subdir)
     evaldir = os.path.join(datadir, args.eval_subdir)
 
-    assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
+    # assert_exactly_one([args.exclude_unlabeled, args.labeled_batch_size])
 
     dataset = torchvision.datasets.ImageFolder(traindir, train_transformation)
 
@@ -190,13 +210,14 @@ def update_ema_variables(model, ema_model, alpha, global_step):
     # Use the true average until the exponential average is more correct
     alpha = min(1 - 1 / (global_step + 1), alpha)
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        ema_param.data.mul_(alpha)
+        ema_param.data = torch.add( ema_param.data, param.data, alpha = 1-alpha)
 
 
-def train(train_loader, model, ema_model, optimizer, epoch, log):
+def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
     global global_step
 
-    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
+    class_criterion = nn.CrossEntropyLoss(reduction='sum', ignore_index=NO_LABEL).to(args.device)
     if args.consistency_type == 'mse':
         consistency_criterion = losses.softmax_mse_loss
     elif args.consistency_type == 'kl':
@@ -210,6 +231,9 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
     # switch to train mode
     model.train()
     ema_model.train()
+
+    ema_model_x_convs = None
+    model_x_convs = None
 
     end = time.time()
     for i, ((input, ema_input), target) in enumerate(train_loader):
@@ -228,8 +252,20 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         assert labeled_minibatch_size > 0
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
-        ema_model_out = ema_model(ema_input_var)
-        model_out = model(input_var)
+        ema_model_out1, ema_model_out2, ema_model_x_conv = ema_model(ema_input_var)
+        ema_model_out = (ema_model_out1, ema_model_out2)
+        model_out1, model_out2, model_x_conv = model(input_var)
+        model_out = (model_out1, model_out2)
+        # print(ema_model_x_conv.shape, model_x_conv.shape)
+        # take x convs to one tensor
+        if model_x_convs == None:
+            model_x_convs = model_x_conv
+        else:
+            model_x_convs = torch.cat((model_x_convs, model_x_conv), 0)
+        if ema_model_x_convs == None:
+            ema_model_x_convs = ema_model_x_conv
+        else:
+            ema_model_x_convs = torch.cat((ema_model_x_convs, ema_model_x_conv), 0)
 
         if isinstance(model_out, Variable):
             assert args.logit_distance_cost < 0
@@ -260,8 +296,36 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
         if args.consistency:
             consistency_weight = get_current_consistency_weight(epoch)
             meters.update('cons_weight', consistency_weight)
-            consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
-            meters.update('cons_loss', consistency_loss.data)
+            if args.som_loss and use_som:
+                with torch.no_grad():
+                    winners_student = torch.empty((args.batch_size), 128).to(args.device)
+                    winners_teacher = torch.empty((args.batch_size), 128).to(args.device)
+                    for ind, (x_conv_student, x_conv_teacher) in enumerate(zip(model_x_conv, ema_model_x_conv)):
+
+                        _, bmu_loc_1D = som.bmu_loc(x_conv_student)
+                        winner_student = som.weights[bmu_loc_1D]
+
+                        _, bmu_loc_1D = som.bmu_loc(x_conv_teacher)
+                        winner_teacher = som.weights[bmu_loc_1D]
+
+
+                        winners_student[ind] = winner_student
+                        winners_teacher[ind] = winner_teacher
+
+
+                    consistency_loss = torch.sum(torch.pow(model_x_conv - winners_student, 2))
+                    consistency_loss += torch.sum(torch.pow(ema_model_x_conv - winners_teacher, 2))
+                    consistency_loss += torch.sum(torch.pow(winners_student - winners_teacher, 2))
+                    consistency_loss *= consistency_weight
+
+                    consistency_loss /= minibatch_size * 3
+                    meters.update('cons_loss', consistency_loss.data)
+            elif args.som_loss and not use_som:
+                consistency_loss = 0
+                meters.update('cons_loss', 0)
+            else:
+                consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
+                meters.update('cons_loss', consistency_loss)
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
@@ -309,7 +373,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log):
             #    **meters.averages(),
             #    **meters.sums()
             #})
-
+    return model_x_convs, ema_model_x_convs
 
 def validate(eval_loader, model, log, global_step, epoch):
     class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(args.device)
@@ -331,7 +395,7 @@ def validate(eval_loader, model, log, global_step, epoch):
         meters.update('labeled_minibatch_size', labeled_minibatch_size)
 
         # compute output
-        output1, output2 = model(input_var)
+        output1, output2, x_conv = model(input_var)
         softmax1, softmax2 = F.softmax(output1, dim=1), F.softmax(output2, dim=1)
         class_loss = class_criterion(output1, target_var) / minibatch_size
 
@@ -424,4 +488,7 @@ if __name__ == '__main__':
         "cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"==> Using device {args.device}")
     print(args)
+    args.batch_size = 512
+    args.arch = 'cifar_sarmad'
+    args.som_loss = True
     main(RunContext(__file__, 0), args)
