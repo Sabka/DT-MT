@@ -27,12 +27,30 @@ class SOM(nn.Module):
         self.weights = torch.randn(m * n, dim).to(self.args.device)
         self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
+        self.quant_err = 0
+        self.num_err = 0
+        self.winner_occurences = [0 for i in range(self.m*self.n)]
 
     def get_weights(self):
         return self.weights
 
     def get_locations(self):
         return self.locations
+    def get_som_stats(self):
+
+        quant_err = self.quant_err/self.num_err
+        winner_discrimination = sum(tmp > 0 for tmp in self.winner_occurences) / self.num_err
+
+        px = torch.FloatTensor([x/self.num_err for x in self.winner_occurences])
+        logpx = torch.log(px)
+        product = px * logpx
+        entropy = - torch.sum(product)
+        
+        self.quant_err = 0
+        self.num_err = 0
+        self.winner_occurences = [0 for i in range(self.m*self.n)]
+
+        return quant_err, winner_discrimination, entropy
 
     def neuron_locations(self):
         for i in range(self.m):
@@ -60,11 +78,21 @@ class SOM(nn.Module):
 
         return bmu_loc, bmu_loc[0] * self.m + bmu_loc[1]
 
-
     def forward(self, x, it):
 
-        bmu_loc, _ = self.bmu_loc(x)
+        """ Take one input x and find location of its BMU in 2D net,
+            then calculate distances of all neurons to this BMU and
+            update their positions. """
 
+        bmu_loc, bmu_loc_1D = self.bmu_loc(x)
+
+        # calculate distance of bmu position in ND space and x
+        winner = self.weights[bmu_loc_1D]
+        self.quant_err += torch.sum(torch.pow(x - winner, 2))
+        self.num_err += 1
+
+        # calculate winner occurences for stats
+        self.winner_occurences[bmu_loc_1D] += 1
 
         learning_rate_op = 1.0 - it / self.niter
         alpha_op = self.alpha * learning_rate_op
@@ -74,8 +102,6 @@ class SOM(nn.Module):
         tmp = self.locations.float() - tmp.float()
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
-        #bmu_distance_squares = torch.sum(
-        #    torch.pow(self.locations.float() - torch.stack([bmu_loc for i in range(self.m * self.n)]).float(), 2), 1)
 
         neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, sigma_op ** 2)))
 

@@ -101,7 +101,7 @@ def main(context, args):
     som = None
     use_som = False
     if args.som_loss:
-        som = SOM(5, 5, 128, 10, args).to(args.device)
+        som = SOM(5, 5, 128, 30, args).to(args.device)
 
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
@@ -110,16 +110,19 @@ def main(context, args):
         LOG.info("--- training epoch in %s seconds ---" % (time.time() - start_time))
         # print(torch.max(model.conv2a))
 
-        if args.som_loss:
+        if epoch >= 0: # supervised pretraining constant
+            use_som = True
+
+        if args.som_loss and use_som:
             som.train()
             with torch.no_grad():
                 for i in model_x_convs.to(args.device):
                     som(i, epoch)
                 for j in ema_x_convs.to(args.device):
                     som(j, epoch)
+            quant_err, winner_discrimination, entropy = som.get_som_stats()
+            print(f"SOM trained on new x_convs, quant_err: {quant_err}, winner_discrimination: {winner_discrimination}, entropy: {entropy}")
 
-            use_som = True
-            print("SOM trained on new x_convs")
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
@@ -315,7 +318,11 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
                     consistency_loss += torch.sum(torch.pow(winners_student - winners_teacher, 2))
                     consistency_loss *= consistency_weight
 
+                    consistency_loss /= minibatch_size * 3
                     meters.update('cons_loss', consistency_loss.data)
+            elif args.som_loss and not use_som:
+                consistency_loss = 0
+                meters.update('cons_loss', 0)
             else:
                 consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', consistency_loss)
