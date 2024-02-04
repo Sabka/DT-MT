@@ -6,3 +6,6 @@ data-local/images
 *.pyc
 results
 transient
+*data-local-10-labels/
+*data-local/
+
