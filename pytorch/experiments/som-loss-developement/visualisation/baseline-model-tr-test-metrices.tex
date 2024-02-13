@@ -1,0 +1,89 @@
+\documentclass[10pt]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tikz,pgfplots}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.16}
+
+\begin{document}
+
+\pgfplotstableread{baseline_test_acc.txt}\baselineTestAcc
+\pgfplotstableread{model_test_acc.txt}\modelTestAcc
+
+\pgfplotstableread{baseline_train_loss.txt}\baselineTrainLoss
+\pgfplotstableread{model_train_loss.txt}\modelTrainLoss
+
+\begin{tikzpicture}
+	\begin{axis}[
+		xlabel={Epoch},
+		ylabel={Test Accuracy},
+		%xtick={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50},
+		%xtick distance=10,
+		% xticklabels={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50},
+		xticklabel style={anchor=near xticklabel},
+		xmin=0,
+		height=8cm,
+		width=12cm,
+		grid=major,
+        legend style={at={(0.5,-0.3)},anchor=north},	
+		legend columns=1,
+		legend cell align={left},
+		x coord trafo/.code={
+                \pgfmathparse{\pgfmathresult/5}
+            },
+            x coord inv trafo/.code={
+                \pgfmathparse{\pgfmathresult*5}
+            }
+        ]
+
+		\addplot plot[color=blue, only marks, mark=*, mark size=1.5pt, mark options={blue}, error bars/.cd, y dir=both, y explicit] 
+		table[x=x,y=y,y error plus=err, y error minus=err] 
+		\baselineTestAcc; \addlegendentry{baseline Test Acc};
+
+
+		\addplot plot[color=red, only marks, mark=triangle*, mark size=2.1pt, mark options={red}, error bars/.cd, y dir=both, y explicit]
+		table[x=x,y=y,y error plus=err, y error minus=err]
+		\modelTestAcc; \addlegendentry{model Test Acc};
+
+
+	\end{axis}	
+\end{tikzpicture}
+
+\begin{tikzpicture}
+	\begin{axis}[
+		xlabel={Epoch},
+		ylabel={Test Accuracy},
+		%xtick={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50},
+		%xtick distance=10,
+		% xticklabels={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50},
+		xticklabel style={anchor=near xticklabel},
+		xmin=0,
+		height=8cm,
+		width=12cm,
+		grid=major,
+        legend style={at={(0.5,-0.3)},anchor=north},
+		legend columns=1,
+		legend cell align={left},
+		x coord trafo/.code={
+                \pgfmathparse{\pgfmathresult/5}
+            },
+            x coord inv trafo/.code={
+                \pgfmathparse{\pgfmathresult*5}
+            }
+        ]
+
+		\addplot plot[color=blue, only marks, mark=*, mark size=1.5pt, mark options={blue}, error bars/.cd, y dir=both, y explicit]
+		table[x=x,y=y,y error plus=err, y error minus=err]
+		\baselineTrainLoss; \addlegendentry{baseline Train Loss};
+
+
+		\addplot plot[color=red, only marks, mark=triangle*, mark size=2.1pt, mark options={red}, error bars/.cd, y dir=both, y explicit]
+		table[x=x,y=y,y error plus=err, y error minus=err]
+		\modelTrainLoss; \addlegendentry{model Train Loss};
+
+
+	\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
