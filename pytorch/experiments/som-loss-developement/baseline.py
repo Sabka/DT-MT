@@ -274,11 +274,9 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
         self.flatten = nn.Flatten()   # FIXED
         self.layers = nn.Sequential(
-            nn.Linear(13, 100),
+            nn.Linear(13, 15),
             nn.Sigmoid(),
-            nn.Linear(100, 150),
-            nn.Sigmoid(),
-            nn.Linear(150, 3),
+            nn.Linear(15, 3),
             nn.Softmax(dim=1)
         )
 

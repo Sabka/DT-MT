@@ -165,7 +165,7 @@ def one_hot(labels, classes, offset):
   return res.to(device)
 # print(one_hot(to)rch.tensor([1, 2, 3, 1, 3]), 3, 1))
 
-def show_umatrix(n, m, d, offset = 0):
+def show_umatrix(n, m, d, offset = 0, fig_file = ""):
 
     neuron_classes = []
     percentage = []
@@ -200,6 +200,9 @@ def show_umatrix(n, m, d, offset = 0):
     plt.title(f'Neuron activation classes {n}x{m}')
     plt.show()
     
+    if fig_file != "":
+    	plt.savefig(fig_file)
+    
 def show_som_stats(all_quant, all_winner, all_entr, all_dist = []):
 
   plt.figure(figsize=(12, 4))
@@ -223,6 +226,7 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist = []):
 
   plt.show()
   
+  
 def show_conf_matrix(confusion, class_labels):
     plt.figure(figsize=(4, 4))
     sns.set(font_scale=1.2)  # Adjust the font size for clarity
@@ -234,6 +238,8 @@ def show_conf_matrix(confusion, class_labels):
     plt.ylabel("Actual")
     plt.title("Confusion Matrix")
     plt.show()
+    
+    
     
 class Losses4:
   def __init__(self, total_loss, sup_loss, som_loss_same, som_loss_dif) -> None:
@@ -425,38 +431,47 @@ class SOM(nn.Module):
         bmu_loc, bmu_loc_1D = self.bmu_loc(x)
         winner = self.weights[bmu_loc_1D]
         return winner
-        
-EPS = 10
+  
+  
+repeat = True      
+EPS = 15
 
-som = SOM(5, 5, 13, EPS, {}).to(device)
-som.train()
+while repeat:
+	som = SOM(5, 5, 13, EPS, {}).to(device)
+	som.train()
 
-all_quant = []
-all_winner = []
-all_entr = []
+	all_quant = []
+	all_winner = []
+	all_entr = []
 
-ds = []
+	ds = []
 
-for ep in range(EPS):
-    som.d = {}
-    print(f"Epoch: {ep+1}", end = " : ")
-    with torch.no_grad():
-      for batch, sample1 in enumerate(som_dataloader):
-        Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
+	for ep in range(EPS):
+		som.d = {}
+		print(f"Epoch: {ep+1}", end = " : ")
+		with torch.no_grad():
+		  for batch, sample1 in enumerate(som_dataloader):
+		    Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
 
-        som(Xs1, ys1, ep)
+		    som(Xs1, ys1, ep)
 
-    cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+		cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
 
 
-    print(f"SOM trained on new x_convs, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
+		print(f"SOM trained on new x_convs, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
 
-    # if ep % 30 == 0:
-      #show_umatrix(5, 5,som.d)
-      #show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
+		# if ep % 30 == 0:
+		  #show_umatrix(5, 5,som.d)
+		  #show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
 
-    ds.append(som.d)
+		ds.append(som.d)
 
+	show_umatrix(5, 5,som.d, 0, "som.png")
+
+	print("Are you okay with SOM ? Y/N")
+	if input().strip() == "Y":
+		repeat = False
+	
 
 #show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
 
@@ -469,11 +484,9 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
         self.flatten = nn.Flatten()   # FIXED
         self.layers = nn.Sequential(
-            nn.Linear(13, 100),
+            nn.Linear(13, 15),
             nn.Sigmoid(),
-            nn.Linear(100, 150),
-            nn.Sigmoid(),
-            nn.Linear(150, 3),
+            nn.Linear(15, 3),
             nn.Softmax(dim=1)
         )
 
@@ -497,6 +510,7 @@ class SomSupLoss(nn.Module):
           dist_i = torch.sqrt(torch.sum(torch.pow(som_pred_x - som_pred_i, 2), dim=1))
           som_loss = kappa * (0.5 - 0.5 * (dist_i - dist_c) / (dist_i + dist_c))
           loss = (sup_loss + som_loss).nanmean() ### NOT FIXING AT ALL, NANS SHOULDNT BE HERE !!!
+          # print(f"sup:{sup_loss.nanmean()}, som:{som_loss.nanmean()}")
         else:
           loss = sup_loss.mean()
 
@@ -534,7 +548,8 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
           som_pred2[i] = som_model.predict(Xs2[i])
           som_pred3[i] = som_model.predict(Xs3[i])
 
-        cur_kappa = kappa * (ep/total_eps) # linear rampup of kappa
+        cur_kappa = kappa * (1-(ep/total_eps)) # linear rampup of kappa
+        # print("kappa", cur_kappa)
         loss, sup_loss, som_loss_same_cat, som_loss_dif_cat = loss_fn(pred1, som_pred1, pred2, som_pred2, pred3, som_pred3, ys1, ys2, ys3, cur_kappa, True)
 
         # Backpropagation
