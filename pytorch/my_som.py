@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import numpy as np
+from numpy import array
 
 class SOM(nn.Module):
     """
@@ -8,9 +8,9 @@ class SOM(nn.Module):
     and linearly decreasing learning rate.
     """
 
-    def __init__(self, m, n, dim, niter, args, alpha=None, sigma=None):
+    def __init__(self, m, n, dim, niter, args_device, alpha=None, sigma=None):
         super(SOM, self).__init__()
-        self.args = args
+        self.args_device = args_device
         self.m = m
         self.n = n
         self.dim = dim
@@ -24,8 +24,8 @@ class SOM(nn.Module):
         else:
             self.sigma = float(sigma)
 
-        self.weights = torch.randn(m * n, dim).to(self.args.device)
-        self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
+        self.weights = torch.randn(m * n, dim).to(self.args_device)
+        self.locations = torch.LongTensor(array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
         self.quant_err = 0
         self.num_err = 0
@@ -55,7 +55,7 @@ class SOM(nn.Module):
     def neuron_locations(self):
         for i in range(self.m):
             for j in range(self.n):
-                yield np.array([i, j])
+                yield array([i, j])
 
     def map_vects(self, input_vects):
         to_return = []
@@ -69,7 +69,7 @@ class SOM(nn.Module):
     def bmu_loc(self, x):
         
         #print(self.weights.get_device())
-        x_matrix = torch.stack([x for i  in range(self.m * self.n)]).to(self.args.device)
+        x_matrix = torch.stack([x for i  in range(self.m * self.n)]).to(self.args_device)
         #print(x_matrix.get_device())
         dists = self.pdist(x_matrix, self.weights)
         _, bmu_index = torch.min(dists, 0)
@@ -109,7 +109,10 @@ class SOM(nn.Module):
 
         learning_rate_multiplier = torch.stack(
             [learning_rate_op[i:i + 1].repeat(self.dim) for i in range(self.m * self.n)])
-        delta = torch.mul(learning_rate_multiplier.to(self.args.device), (torch.stack([x for i in range(self.m * self.n)]).to(self.args.device) - self.weights))
+
+        delta = torch.mul(learning_rate_multiplier.to(self.args_device), (torch.stack([x for i in range(self.m * self.n)]).to(self.args_device) - self.weights))
+        # print(torch.isnan(delta))
         new_weights = torch.add(self.weights, delta)
+
         self.weights = new_weights
 
