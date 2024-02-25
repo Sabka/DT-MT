@@ -355,7 +355,7 @@ print(f"FV created in {tm() - t} seconds")
 # training SOM
 
 EPS = 100
-for n in [6, 7, 9, 10]:
+for n in [8, 15]:
 # n = 8
 
   som = SOM(n, n, 128, EPS, {}).to(device)
