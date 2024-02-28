@@ -27,9 +27,9 @@ from mean_teacher import architectures, datasets, data, losses, ramps, cli
 from mean_teacher.run_context import RunContext
 from mean_teacher.data import NO_LABEL
 from mean_teacher.utils import *
-from my_som import SOM
 
-logging.basicConfig(filename='mt-som.log', filemode='a', format='%(name)s - %(levelname)s - %(message)s')
+
+logging.basicConfig(filename='mt-nosom.log', filemode='a', format='%(name)s - %(levelname)s - %(message)s')
 LOG = logging.getLogger('main')
 LOG.setLevel(logging.DEBUG) 
 
@@ -331,12 +331,12 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
             else:
                 consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', consistency_loss)
-                print("Thats it", use_som, args.som_loss)#, torch.isnan(consistency_loss))
+                # print("Thats it", consistency_loss)#, torch.isnan(consistency_loss))
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
 
-        loss = class_loss + consistency_loss / 500 # + res_loss
+        loss = class_loss + consistency_loss / 500  + res_loss
         #assert not (np.isnan(loss.data) or loss.data > 1e5), 'Loss explosion: {}'.format(loss.data)
         meters.update('loss', loss.data)
 
@@ -496,6 +496,7 @@ if __name__ == '__main__':
     print(args)
     args.batch_size = 512
     args.arch = 'cifar_sarmad'
-    args.som_loss = True
+    args.som_loss = False
     args.resume = False
+    args.consistency = True
     main(RunContext(__file__, 0), args)

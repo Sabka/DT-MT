@@ -313,6 +313,7 @@ model.load_state_dict(checkpoint['state_dict'])
 # class_criterion = nn.CrossEntropyLoss(size_average=False).to(device)
 model.eval()
 
+
 transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
@@ -329,6 +330,83 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=4,
 
 classes = ('airplanes', 'cars', 'birds', 'cats',
            'deers', 'dogs', 'frogs', 'horses', 'ships', 'trucks')
+
+
+### added from here    
+
+import re
+import argparse
+import os
+import shutil
+import time
+import math
+import logging
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+import torchvision.datasets
+
+from mean_teacher import architectures, datasets, data, losses, ramps, cli
+from mean_teacher.run_context import RunContext
+from mean_teacher.data import NO_LABEL
+from mean_teacher.utils import *
+from my_som import SOM
+
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    maxk = max(topk)
+    labeled_minibatch_size = max(target.ne(NO_LABEL).sum(), 1e-8)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+        res.append(correct_k.mul_(100.0 / labeled_minibatch_size))
+    return res
+
+       
+def validate(eval_loader, model):
+
+    class_criterion = nn.CrossEntropyLoss(size_average=False, ignore_index=NO_LABEL).to(device)
+    precs = []
+
+    for i, (input, target) in enumerate(eval_loader):
+        print(f"{i} / {len(eval_loader)}")
+
+        input_var = torch.autograd.Variable(input, volatile=True)
+        target_var = torch.autograd.Variable(target.to(device), volatile=True)
+
+        minibatch_size = len(target_var)
+        labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum()
+        assert labeled_minibatch_size > 0
+
+        # compute output
+        output1, output2, x_conv = model(input_var)
+        softmax1, softmax2 = F.softmax(output1, dim=1), F.softmax(output2, dim=1)
+        class_loss = class_criterion(output1, target_var) / minibatch_size
+
+        # measure accuracy and record loss
+        prec1, prec5 = accuracy(output1.data, target_var.data, topk=(1, 5))
+        precs.append(prec1)
+    
+    print(output1.data[:10], target_var.data[:10])
+    return sum(precs) / len(precs)
+    
+    
+print("start")
+print(validate(testloader, model))
+input()
+### to here
 
 t = tm()
 loaded_data = []
