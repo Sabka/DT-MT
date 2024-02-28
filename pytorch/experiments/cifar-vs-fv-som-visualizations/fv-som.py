@@ -375,7 +375,7 @@ for n in [8, 15]:
         for i, x_c in enumerate(loaded_data, 0):
           if i % 5000 == 0:
             print(f"{i} / {len(loaded_data)}, time: {tm() - t}")
-            with open("fv-logs.log", "a") as a:
+            with open("logs/fv-logs.log", "a") as a:
               a.write(f"{i} / {len(loaded_data)}, n = {n}, time: {tm() - t}\n")
           input, label = x_c
           input = input.view(-1)
@@ -389,7 +389,7 @@ for n in [8, 15]:
         show_umatrix(n, n, som.d, 0, f"figsf/fv-{n}n-{ep}ep.png")
         show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figsf/fv-{n}n-{ep}ep-stat.png")
         # print(som.d)
-  with open("fv-som.log", "a") as a:
+  with open("logs/fv-som.log", "a") as a:
     a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
 
     # ds.append(som.d)

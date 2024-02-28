@@ -350,7 +350,7 @@ for n in [8, 15]:
         for i, data in enumerate(trainloader, 0):
           if i % 5000 == 0:
             print(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}")
-            with open("cifar-logs.log", "a") as a:
+            with open("logs/cifar-logs.log", "a") as a:
               a.write(f"{i} / {len(trainloader)}, n = {n}, time: {tm() - t}\n")
 	# Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
           input, label = data
@@ -365,7 +365,7 @@ for n in [8, 15]:
         show_umatrix(n, n, som.d, 0, f"figs/cifar10-{n}n-{ep}ep-new.png")
         show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat-new.png")
         # print(som.d)
-  with open("cifar10-som.log", "a") as a:
+  with open("logs/cifar10-som.log", "a") as a:
     a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
 
     # ds.append(som.d)
