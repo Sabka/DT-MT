@@ -286,7 +286,7 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist = [], name="tmp"):
   # plt.show()
   plt.savefig(name, bbox_inches='tight')
 
-from time import time as tm
+"""from time import time as tm
 EPS = 100
 n = 8
 som = SOM(n, n, 3*32*32, EPS, {})
@@ -325,13 +325,12 @@ for ep in range(EPS):
     torch.save(som.weights, f'models/cifar10-{n}n-{ep}ep.pt')
   with open("cifar10-som.log", "a") as a:
     a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
-  
+  """
 
   
-    
-
-"""
-for n in [6, 7, 9, 10]:
+from time import time as tm  
+EPS = 100
+for n in [8, 15]:
 # n = 8
 
   som = SOM(n, n, 3*32*32, EPS, {})
@@ -363,8 +362,8 @@ for n in [6, 7, 9, 10]:
       # print(f"SOM trained on datapoints, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}", sep = "\t")
 
       if ep % 5 == 4:
-        show_umatrix(n, n, som.d, 0, f"figs/cifar10-{n}n-{ep}ep.png")
-        show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat.png")
+        show_umatrix(n, n, som.d, 0, f"figs/cifar10-{n}n-{ep}ep-new.png")
+        show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/cifar10-{n}n-{ep}ep-stat-new.png")
         # print(som.d)
   with open("cifar10-som.log", "a") as a:
     a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
@@ -373,4 +372,4 @@ for n in [6, 7, 9, 10]:
 
 
 # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
-"""
+

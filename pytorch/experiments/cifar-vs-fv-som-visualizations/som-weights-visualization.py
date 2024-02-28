@@ -10,8 +10,10 @@ from time import time as tm
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 t = tm()
+ep = 75
+neurons = 8
 print("WEIGHT LOADING")
-params = torch.load('models/cifar10-8n-69ep.pt')
+params = torch.load(f'models/cifar10-{neurons}n-{ep}ep.pt')
 print(f"WEIGHT LOADED in {tm() - t}s")
 
 num_row = 8
@@ -31,7 +33,7 @@ for i, nw in enumerate(params):
 
 	
 plt.tight_layout()
-plt.savefig("1.svg", format="svg")
+plt.savefig(f"from-som-weights-{neurons}n-{ep}ep.svg", format="svg")
 plt.show()
 
 
