@@ -163,7 +163,9 @@ def main(args):
 def update_ema_variables(model, ema_model, alpha, global_step):
     alpha = min(1 - 1 / (global_step + 1), alpha)
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        # ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        ema_param.data = torch.add( ema_param.data, param.data, alpha = 1-alpha)
+
 
 
 def train(train_loader, model, ema_model, optimizer, epoch):
