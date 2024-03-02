@@ -326,6 +326,7 @@ def train(train_loader, model, ema_model, optimizer, epoch, log, som, use_som):
             else:
                 consistency_loss = consistency_weight * consistency_criterion(cons_logit, ema_logit) / minibatch_size
                 meters.update('cons_loss', consistency_loss)
+
         else:
             consistency_loss = 0
             meters.update('cons_loss', 0)
@@ -490,5 +491,5 @@ if __name__ == '__main__':
     print(args)
     args.batch_size = 512
     args.arch = 'cifar_sarmad'
-    args.som_loss = True
+    args.som_loss = False
     main(RunContext(__file__, 0), args)
