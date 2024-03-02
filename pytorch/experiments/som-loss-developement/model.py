@@ -242,7 +242,7 @@ def show_conf_matrix(confusion, class_labels):
     
     
 class Losses4:
-  def __init__(self, total_loss, sup_loss, som_loss_same, som_loss_dif) -> None:
+  def __init__(self, total_loss, sup_loss, _same, som_loss_dif) -> None:
      self.total_loss = total_loss
      self.sup_loss = sup_loss
      self.som_loss_same = som_loss_same
@@ -429,7 +429,8 @@ class SOM(nn.Module):
 
 
         bmu_loc, bmu_loc_1D = self.bmu_loc(x)
-        winner = self.weights[bmu_loc_1D]
+
+        winner = bmu_loc # self.weights[bmu_loc_1D]
         return winner
   
   
@@ -539,9 +540,9 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
         pred3 = model(Xs3)
 
 
-        som_pred1 = torch.empty(shape1, 13).to(device)
-        som_pred2 = torch.empty(shape1, 13).to(device)
-        som_pred3 = torch.empty(shape1, 13).to(device)
+        som_pred1 = torch.empty(shape1, 2).to(device)
+        som_pred2 = torch.empty(shape1, 2).to(device)
+        som_pred3 = torch.empty(shape1, 2).to(device)
 
         for i in range(len(Xs1)):
           som_pred1[i] = som_model.predict(Xs1[i])
@@ -621,6 +622,7 @@ tm = time.time()
 for mod_i in range(20):
 	print(f"{mod_i+1}. model starts in {tm - time.time()} sec")
 	model_losses, model_accs, model_confs = {}, {}, {}
+	mlp = NeuralNetwork().to(device)
 	for ep in range(EPS):
 		print(f"Epoch: {ep+1}")
 		losses = train(train_dataloader, mlp, som, loss_fn, optimizer, kappa, ep, EPS)
