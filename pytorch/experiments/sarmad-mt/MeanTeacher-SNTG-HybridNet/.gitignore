@@ -1,0 +1,4 @@
+data-local/images/
+data-local/workdir/
+Datasets/__pycache__/data.cpython-310.pyc
+misc/__pycache__/utils.cpython-310.pyc
