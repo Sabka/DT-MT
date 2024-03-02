@@ -183,7 +183,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
         if (input.size(0) != args.batch_size):
             continue
 
-        input_var = torch.autograd.Variable(input).to(devide)
+        input_var = torch.autograd.Variable(input).to(device)
 
 
         target_var = torch.autograd.Variable(target.to(device))
