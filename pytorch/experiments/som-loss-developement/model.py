@@ -429,6 +429,10 @@ class SOM(nn.Module):
 
 
         bmu_loc, bmu_loc_1D = self.bmu_loc(x)
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
         winner = self.weights[bmu_loc_1D]
         return winner
   
@@ -636,7 +640,7 @@ for mod_i in range(20):
 
 training = {"som":som_stats, "train_loss": final_losses, "test_acc": accs, "conf_mats": confs}
 json_object = json.dumps(training, indent=4)
-with open("model_results/20models50eps.json", "w") as outfile:
+with open("model_results/20models50eps-ndimloss.json", "w") as outfile:
 	outfile.write(json_object)
 
 
