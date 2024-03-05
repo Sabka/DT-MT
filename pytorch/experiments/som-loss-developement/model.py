@@ -236,7 +236,7 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
             som_pred2[i] = som_model.predict(Xs2[i])
             som_pred3[i] = som_model.predict(Xs3[i])
 
-        cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampup of kappa
+        cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampdown of kappa
         # print("kappa", cur_kappa)
         loss, sup_loss, som_loss_same_cat, som_loss_dif_cat = loss_fn(pred1, som_pred1, pred2, som_pred2, pred3,
                                                                       som_pred3, ys1, ys2, ys3, cur_kappa, True)
@@ -250,13 +250,6 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
         som_losses_same_cat.append(som_loss_same_cat)
         som_losses_dif_cat.append(som_loss_dif_cat)
 
-        # if True in torch.isnan(loss):
-        #	print(loss.item())
-        #	print(sup_loss.item())
-        #	print(som_loss_same_cat)
-        #	print(som_loss_dif_cat)
-        #	input()
-
         if batch % 100 == 0:
             loss, current = loss.item(), batch
             print(f"loss: {loss:>7f}  [{current:>5d}/{len(dataloader):>5d}]")
@@ -265,7 +258,7 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
         som_losses_same_cat).float().mean(), torch.tensor(som_losses_dif_cat).float().mean()
 
 
-def test(dataloader, model, loss_fn):
+def test(dataloader, model, loss_fn, is_test_dataloader):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -274,9 +267,17 @@ def test(dataloader, model, loss_fn):
 
     with torch.no_grad():
         for sample in dataloader:
-            Xs1, ys1 = sample[:, :-1].type(torch.float32).to(device), sample[:, -1:].type(torch.float32).to(device)
+            if is_test_dataloader:
+                Xs1, ys1 = sample[:, :-1].type(torch.float32).to(device), sample[:, -1:].type(torch.float32).to(device)
+                
+            else:
+                shape1 = min(batch_size, sample[:, 0:1, :].shape[0])
+                sample1, sample2, sample3 = sample[:, 0:1, :].reshape(shape1, 14), sample[:, 1:2, :].reshape(shape1, 14), sample[:, 2:3, :].reshape(shape1, 14)
+                Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
+                Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(device), sample2[:, -1:].type(torch.float32).to(device)
+                Xs3, ys3 = sample3[:, :-1].type(torch.float32).to(device), sample3[:, -1:].type(torch.float32).to(device)
+		    
             pred1 = model(Xs1).to(device)
-
             predicted_values += list(pred1.argmax(1))
             real_values += list((ys1 - 1).squeeze())
 
@@ -304,7 +305,7 @@ som.eval()
 
 EPS = 1
 MODS = 1
-final_losses, accs, confs = {}, {}, {}
+final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
 for kappa in [0, 0.7, 0.8]:
 	for mod_i in range(MODS):
@@ -313,20 +314,23 @@ for kappa in [0, 0.7, 0.8]:
 		loss_fn = SomSupLoss()
 		loss_fn2 = nn.MSELoss()
 		optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
-		model_losses, model_accs, model_confs = {}, {}, {}
+		model_losses, model_accs, model_confs, model_train_accs = {}, {}, {}, {}
 		for ep in range(EPS):
 		    print(f"Epoch: {ep + 1}")
 		    losses = train(train_dataloader, mlp, som, loss_fn, optimizer, kappa, ep, EPS)
-		    confusion, acc = test(test_dataloader, mlp, loss_fn2)
+		    confusion, acc = test(test_dataloader, mlp, loss_fn2, True)
+		    confision2, train_acc = test(train_dataloader, mlp, loss_fn2, False)
 		    model_losses[ep] = round(float(losses[0].numpy()), 5)
 		    model_accs[ep] = round(acc, 5)
+		    model_train_accs[ep] = round(train_acc, 5)
 		    model_confs[ep] = confusion.tolist()
 
 		final_losses[mod_i] = model_losses
 		accs[mod_i] = model_accs
+		train_accs[mod_i] = model_train_accs
 		confs[mod_i] = model_confs
 
-	training = {"train_loss": final_losses, "test_acc": accs, "conf_mats": confs}
+	training = {"train_loss": final_losses, "train_acc": model_train_accs, "test_acc": accs, "conf_mats": confs}
 	json_object = json.dumps(training, indent=4)
 	if not os.path.isdir("model_results"): 
 		os.makedirs("model_results") 
