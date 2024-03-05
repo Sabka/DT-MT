@@ -1,6 +1,6 @@
 import subprocess
 import sys
-
+import os
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
@@ -302,12 +302,12 @@ optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 som = torch.load("pretrained_som1709630916.2606385.pt")
 som.eval()
 
-EPS = 100
-MODS = 20
+EPS = 1
+MODS = 1
 final_losses, accs, confs = {}, {}, {}
 tm = time.time()
 for kappa in [0, 0.7, 0.8]:
-	for mod_i in range(10):
+	for mod_i in range(MODS):
 		print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
 		mlp = NeuralNetwork().to(device)
 		loss_fn = SomSupLoss()
@@ -326,7 +326,9 @@ for kappa in [0, 0.7, 0.8]:
 		accs[mod_i] = model_accs
 		confs[mod_i] = model_confs
 
-	training = {"som": som_stats, "train_loss": final_losses, "test_acc": accs, "conf_mats": confs}
+	training = {"train_loss": final_losses, "test_acc": accs, "conf_mats": confs}
 	json_object = json.dumps(training, indent=4)
+	if not os.path.isdir("model_results"): 
+		os.makedirs("model_results") 
 	with open(f"model_results/{MODS}models{EPS}eps{kappa}k.json", "w") as outfile:
 		outfile.write(json_object)
