@@ -1,103 +1,19 @@
-import subprocess
-import sys
-
-
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-
-install("ucimlrepo")  # install wine dataset repo
-install("seaborn")
-from ucimlrepo import fetch_ucirepo
-
-
+import time
+from math import *
+import matplotlib.pyplot as plt
+import seaborn as sns
+from torch import nn
+import torch
 import numpy as np
+from datasets import prepare_datasets
 import json
 
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from torch.nn.modules.loss import MSELoss
-import torch.nn.functional as F
 
-import sklearn.model_selection
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
+# UTILS
 
-import matplotlib.pyplot as plt
-from math import *
-import time
+train_dataloader, test_dataloader, som_dataloader, device = prepare_datasets(
+    batch_size=30)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-### DOWNLOAD DATA
-
-# fetch dataset
-wine = fetch_ucirepo(id=109)
-
-# data (as pandas dataframes)
-X = wine.data.features.to_numpy()  # (178, 13)
-y = wine.data.targets.to_numpy()  # 1, 2 or 3
-
-dataset_arr = np.hstack((X, y))
-batch_size = 30
-
-### PREPARE DATA
-
-# divide into classes
-class1 = dataset_arr[:59]  # 59x14
-class2 = dataset_arr[59:130]
-class3 = dataset_arr[130:]
-
-# TODO nevadi ze to je nahodne a nie pseudonahodne ??
-np.random.shuffle(class1)  # 59x14
-np.random.shuffle(class2)
-np.random.shuffle(class3)
-
-size = 48
-class1 = class1[:48]  # 48x14
-class2 = class2[:48]
-class3 = class3[:48]
-
-
-dataset = []
-paired_labels = []
-
-for i in range(size):
-    for j in range(size):
-        if i != j:
-            dataset.append((class1[i], class1[j]))
-            paired_labels.append(1)
-            dataset.append((class2[i], class2[j]))
-            paired_labels.append(2)
-            dataset.append((class3[i], class3[j]))
-            paired_labels.append(3)
-
-for i in range(size):
-    for j in range(size):
-        dataset.append((class1[i], class2[j]))
-        paired_labels.append(4)
-        dataset.append((class1[i], class3[j]))
-        paired_labels.append(5)
-        dataset.append((class2[i], class3[j]))
-        paired_labels.append(6)
-
-
-paired_train_dataset, paired_test_dataset, labels1, labels2 = sklearn.model_selection.train_test_split(dataset,
-                                                                                                       paired_labels,
-                                                                                                       test_size=0.25,
-                                                                                                       random_state=42,
-                                                                                                       shuffle=True,
-                                                                                                       stratify=paired_labels)
-
-train_dataloader = DataLoader(torch.tensor(np.array(paired_train_dataset)).to(device), batch_size=batch_size,
-                              shuffle=True)
-test_dataloader = DataLoader(torch.tensor(np.array(paired_test_dataset)).to(device), batch_size=batch_size,
-                             shuffle=True)
-
-som_dataloader = DataLoader(torch.tensor(np.concatenate((class1, class2, class3))).to(device), shuffle=True)
-
-### UTILS
 
 def show_umatrix(n, m, d, offset=0, fig_file=""):
     neuron_classes = []
@@ -111,8 +27,10 @@ def show_umatrix(n, m, d, offset=0, fig_file=""):
             if act_neuron not in d:
                 continue
 
-            neuron_classes.append(max(d[act_neuron], key=d[act_neuron].get) + offset)
-            percentage.append(d[act_neuron][neuron_classes[-1] - offset] / sum(d[act_neuron].values()) * 100 * 2.5)
+            neuron_classes.append(
+                max(d[act_neuron], key=d[act_neuron].get) + offset)
+            percentage.append(d[act_neuron][neuron_classes[-1] -
+                              offset] / sum(d[act_neuron].values()) * 100 * 2.5)
             x.append(c)
             y.append(r)
 
@@ -205,9 +123,7 @@ def show_3losses(losses):
     plt.show()
 
 
-
-
-### SOM
+# SOM
 
 class SOM(nn.Module):
     """
@@ -232,7 +148,8 @@ class SOM(nn.Module):
             self.sigma = float(sigma)
 
         self.weights = torch.randn(m * n, dim).to(device)
-        self.locations = torch.LongTensor(np.array(list(self.neuron_locations())))
+        self.locations = torch.LongTensor(
+            np.array(list(self.neuron_locations())))
         self.pdist = nn.PairwiseDistance(p=2)
         self.quant_err = 0
         self.num_err = 0
@@ -253,9 +170,11 @@ class SOM(nn.Module):
 
     def get_som_stats(self):
         quant_err = self.quant_err / self.num_err
-        winner_discrimination = sum(tmp > 0 for tmp in self.winner_occurences) / (self.m * self.n)
+        winner_discrimination = sum(
+            tmp > 0 for tmp in self.winner_occurences) / (self.m * self.n)
 
-        px = torch.FloatTensor([x / self.num_err for x in self.winner_occurences])
+        px = torch.FloatTensor(
+            [x / self.num_err for x in self.winner_occurences])
         logpx = torch.log2(px)
         product = px * logpx
         entropy = - torch.nansum(product)
@@ -299,7 +218,8 @@ class SOM(nn.Module):
 
     def bmu_loc(self, x):
 
-        x_matrix = torch.stack([x.squeeze() for i in range(self.m * self.n)]).to(device)
+        x_matrix = torch.stack([x.squeeze()
+                               for i in range(self.m * self.n)]).to(device)
         dists = self.pdist(x_matrix, self.weights)
         _, bmu_index = torch.min(dists, 0)
         bmu_loc = self.locations[bmu_index, :]
@@ -308,7 +228,6 @@ class SOM(nn.Module):
         return bmu_loc, bmu_loc[0] * self.m + bmu_loc[1]
 
     def forward(self, x, y, it):
-
         """ Take one input x and find location of its BMU in 2D net,
             then calculate distances of all neurons to this BMU and
             update their positions. """
@@ -344,7 +263,8 @@ class SOM(nn.Module):
         tmp = torch.pow(tmp, 2)
         bmu_distance_squares = torch.sum(tmp, 1)
 
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, sigma_op ** 2)))
+        neighbourhood_func = torch.exp(
+            torch.neg(torch.div(bmu_distance_squares, sigma_op ** 2)))
 
         learning_rate_op = alpha_op * neighbourhood_func
 
@@ -370,57 +290,57 @@ class SOM(nn.Module):
 
 def pretrain_som():
 
-	repeat = True
-	EPS = 20
-	som_size = 6
-	exp_run_time = time.time()
+    repeat = True
+    EPS = 20
+    som_size = 5
+    exp_run_time = time.time()
 
-	while repeat:
-		som = SOM(som_size, som_size, 13, EPS, {}).to(device)
-		som.train()
+    while repeat:
+        som = SOM(som_size, som_size, 13, EPS, {}).to(device)
+        som.train()
 
-		all_quant = []
-		all_winner = []
-		all_entr = []
+        all_quant = []
+        all_winner = []
+        all_entr = []
 
-		ds = []
+        ds = []
 
-		for ep in range(EPS):
-		    som.d = {}
-		    print(f"Epoch: {ep + 1}", end=" : ")
-		    with torch.no_grad():
-		        for batch, sample1 in enumerate(som_dataloader):
-		            Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(
-		                device)
+        for ep in range(EPS):
+            som.d = {}
+            print(f"Epoch: {ep + 1}", end=" : ")
+            with torch.no_grad():
+                for batch, sample1 in enumerate(som_dataloader):
+                    Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(
+                        device)
 
-		            som(Xs1, ys1, ep)
+                    som(Xs1, ys1, ep)
 
-		    cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
+            cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
 
-		    print(
-		        f"SOM trained on new x_convs, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}",
-		        sep="\t")
+            print(
+                f"SOM trained on new x_convs, quant_err: {cur_quant_err}, winner_discrimination: {cur_winner_discrimination}, entropy: {cur_entropy}, SP dist: {dists}",
+                sep="\t")
 
-		    # if ep % 30 == 0:
-		    # show_umatrix(5, 5,som.d)
-		    # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
+            # if ep % 30 == 0:
+            # show_umatrix(5, 5,som.d)
+            # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
 
-		    ds.append(som.d)
+            ds.append(som.d)
 
-		show_umatrix(som_size, som_size, som.d, 0, f"som{exp_run_time}.png")
-		torch.save(som, f"pretrained_som{exp_run_time}.pt")
+        show_umatrix(som_size, som_size, som.d, 0, f"som{exp_run_time}.png")
+        torch.save(som, f"pretrained_som{exp_run_time}.pt")
 
+        if cur_winner_discrimination == 1.0:
+            print("Are you okay with SOM ? Y/N")
+            if input().strip() == "Y":
+                repeat = False
 
-		if cur_winner_discrimination == 1.0:
-			print("Are you okay with SOM ? Y/N")
-			if input().strip() == "Y":
-				repeat = False
+    # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
 
-
-	# show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
-
-	som_stats = {"qe": [round(tensor.item(), 5) for tensor in som.all_quant_err],
-		         "wd": [round(i, 5) for i in som.all_winner], "e": [round(tensor.item(), 5) for tensor in som.all_entr],
-		         "dist": [round(i, 5) for i in som.all_dists]}
-
+    som_stats = {"qe": [round(tensor.item(), 5) for tensor in som.all_quant_err],
+                 "wd": [round(i, 5) for i in som.all_winner], "e": [round(tensor.item(), 5) for tensor in som.all_entr],
+                 "dist": [round(i, 5) for i in som.all_dists]}
+    json_object = json.dumps(som_stats, indent=4)
+    with open(f"som-stats-{exp_run_time}.json", "w") as outfile:
+        outfile.write(json_object)
 

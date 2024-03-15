@@ -1,161 +1,28 @@
+import time
+from math import *
+from sklearn.metrics import confusion_matrix
+import torch.nn.functional as F
+from torch.nn.modules.loss import MSELoss
+from torch.utils.data import DataLoader
+from torch import nn
+import torch
+import json
+import numpy as np
+from ucimlrepo import fetch_ucirepo
 import subprocess
 import sys
 import os
-
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-
-install("ucimlrepo")  # install wine dataset repo
-install("seaborn")
-from ucimlrepo import fetch_ucirepo
-
-import numpy as np
-import json
-
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from torch.nn.modules.loss import MSELoss
-import torch.nn.functional as F
-
-import sklearn.model_selection
-from sklearn.metrics import confusion_matrix
-import seaborn as sns
-
-import matplotlib.pyplot as plt
-from math import *
-
-import time
+from datasets import prepare_datasets
 from som import SOM
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
-### DOWNLOAD DATA
-
-# fetch dataset
-wine = fetch_ucirepo(id=109)
-
-# data (as pandas dataframes)
-X = wine.data.features.to_numpy()  # (178, 13)
-y = wine.data.targets.to_numpy()  # 1, 2 or 3
-
-dataset_arr = np.hstack((X, y))
+train_dataloader, test_dataloader, som_dataloader, device = prepare_datasets(
+    batch_size=30)
 batch_size = 30
 
-### PREPARE DATA
-
-# divide into classes
-class1 = dataset_arr[:59]  # 59x14
-class2 = dataset_arr[59:130]
-class3 = dataset_arr[130:]
-
-# TODO nevadi ze to je nahodne a nie pseudonahodne ??
-np.random.shuffle(class1)  # 59x14
-np.random.shuffle(class2)
-np.random.shuffle(class3)
-
-size = 48
-class1 = class1[:48]  # 48x14
-class2 = class2[:48]
-class3 = class3[:48]
+# UTILS
 
 
-dataset = []
-paired_labels = []
-
-for i in range(size):
-    for j in range(size):
-        if i != j:
-            dataset.append((class1[i], class1[j]))
-            paired_labels.append(1)
-            dataset.append((class2[i], class2[j]))
-            paired_labels.append(2)
-            dataset.append((class3[i], class3[j]))
-            paired_labels.append(3)
-
-for i in range(size):
-    for j in range(size):
-        dataset.append((class1[i], class2[j]))
-        paired_labels.append(4)
-        dataset.append((class1[i], class3[j]))
-        paired_labels.append(5)
-        dataset.append((class2[i], class3[j]))
-        paired_labels.append(6)
-
-
-paired_train_dataset, paired_test_dataset, labels1, labels2 = sklearn.model_selection.train_test_split(dataset,
-                                                                                                       paired_labels,
-                                                                                                       test_size=0.25,
-                                                                                                       random_state=42,
-                                                                                                       shuffle=True,
-                                                                                                       stratify=paired_labels)
-
-train_dataloader = DataLoader(torch.tensor(np.array(paired_train_dataset)).to(device), batch_size=batch_size,
-                              shuffle=True)
-test_dataloader = DataLoader(torch.tensor(np.array(paired_test_dataset)).to(device), batch_size=batch_size,
-                             shuffle=True)
-
-som_dataloader = DataLoader(torch.tensor(np.concatenate((class1, class2, class3))).to(device), shuffle=True)
-
-
-def generate_triplet(x, class1, class2):
-    cong = class1[np.random.randint(0, class1.shape[0])]
-    incong1 = class2[np.random.randint(0, class2.shape[0])]
-    return np.array((x, cong, incong1))
-
-
-# divide into classes
-class1 = dataset_arr[:59]
-class2 = dataset_arr[59:130]
-class3 = dataset_arr[130:]
-
-# nahodne preusporiadanie so seedom
-np.random.seed(4742)
-np.random.shuffle(class1)
-np.random.seed(4742)
-np.random.shuffle(class2)
-np.random.seed(4742)
-np.random.shuffle(class3)
-
-# test dataset
-class_test_size = 15
-test_dataset = np.vstack((class1[:class_test_size], class2[:class_test_size], class3[:class_test_size]))
-print(test_dataset.shape)
-test_dataloader = DataLoader(torch.tensor(test_dataset).to(device), batch_size=batch_size, shuffle=True)
-
-# train dataset
-use_of_x_times = 25
-dataset_size = 6650
-dataset_triplets = np.empty((dataset_size, 3, 14))
-class1, class2, class3 = class1[class_test_size:], class2[class_test_size:], class3[class_test_size:]
-position = 0
-
-for i in range(use_of_x_times):
-
-    for x in class1:
-        dataset_triplets[position] = generate_triplet(x, class1, class2)
-        position += 1
-        dataset_triplets[position] = generate_triplet(x, class1, class3)
-        position += 1
-
-    for x in class2:
-        dataset_triplets[position] = generate_triplet(x, class2, class1)
-        position += 1
-        dataset_triplets[position] = generate_triplet(x, class2, class3)
-        position += 1
-
-    for x in class3:
-        dataset_triplets[position] = generate_triplet(x, class3, class1)
-        position += 1
-        dataset_triplets[position] = generate_triplet(x, class3, class2)
-        position += 1
-
-print(dataset_triplets.shape)
-train_dataloader = DataLoader(torch.tensor(dataset_triplets).to(device), batch_size=batch_size, shuffle=True)
-
-
-### UTILS
 def one_hot(labels, classes, offset):
     labels = labels - offset
     labels = labels.squeeze().to(torch.int)
@@ -163,16 +30,23 @@ def one_hot(labels, classes, offset):
     return res.to(device)
 
 
-### MODEL
+# MODEL
 
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
         self.flatten = nn.Flatten()  # FIXED
+
+        self.input_layer = nn.Linear(13, 10)
+        self.hid_layer = nn.Linear(10, 3)
+        with torch.no_grad():
+            nn.init.normal_(self.input_layer.weight, mean=0, std=0.2)
+            nn.init.normal_(self.hid_layer.weight, mean=0, std=0.2)
+
         self.layers = nn.Sequential(
-            nn.Linear(13, 15),
+            self.input_layer,
             nn.Sigmoid(),
-            nn.Linear(15, 3),
+            self.hid_layer,
             nn.Softmax(dim=1)
         )
 
@@ -190,13 +64,18 @@ class SomSupLoss(nn.Module):
                 kappa, want_som):
         loss_fn = nn.MSELoss(reduction='mean')
 
-        sup_loss = F.mse_loss(pred_x, one_hot(targets_x, 3, 1), reduction='none').mean(dim=1)
+        sup_loss = F.mse_loss(pred_x, one_hot(
+            targets_x, 3, 1), reduction='none').mean(dim=1)
 
         if want_som:
-            dist_c = torch.sqrt(torch.sum(torch.pow(som_pred_x - som_pred_c, 2), dim=1))
-            dist_i = torch.sqrt(torch.sum(torch.pow(som_pred_x - som_pred_i, 2), dim=1))
-            som_loss = kappa * (0.5 - 0.5 * (dist_i - dist_c) / (dist_i + dist_c))
-            loss = (sup_loss + som_loss).nanmean()  ### NOT FIXING AT ALL, NANS SHOULDNT BE HERE !!!
+            dist_c = torch.sqrt(
+                torch.sum(torch.pow(som_pred_x - som_pred_c, 2), dim=1))
+            dist_i = torch.sqrt(
+                torch.sum(torch.pow(som_pred_x - som_pred_i, 2), dim=1))
+            som_loss = kappa * \
+                (0.5 - 0.5 * (dist_i - dist_c) / (dist_i + dist_c))
+            # NOT FIXING AT ALL, NANS SHOULDNT BE HERE !!!
+            loss = (sup_loss + som_loss).nanmean()
             # print(f"sup:{sup_loss.nanmean()}, som:{som_loss.nanmean()}")
         else:
             loss = sup_loss.mean()
@@ -216,9 +95,12 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
         shape1 = min(batch_size, paired_sample[:, 0:1, :].shape[0])
         sample1, sample2, sample3 = paired_sample[:, 0:1, :].reshape(shape1, 14), paired_sample[:, 1:2, :].reshape(
             shape1, 14), paired_sample[:, 2:3, :].reshape(shape1, 14)
-        Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
-        Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(device), sample2[:, -1:].type(torch.float32).to(device)
-        Xs3, ys3 = sample3[:, :-1].type(torch.float32).to(device), sample3[:, -1:].type(torch.float32).to(device)
+        Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(
+            device), sample1[:, -1:].type(torch.float32).to(device)
+        Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(
+            device), sample2[:, -1:].type(torch.float32).to(device)
+        Xs3, ys3 = sample3[:, :-1].type(torch.float32).to(
+            device), sample3[:, -1:].type(torch.float32).to(device)
 
         optimizer.zero_grad()
 
@@ -268,21 +150,27 @@ def test(dataloader, model, loss_fn, is_test_dataloader):
     with torch.no_grad():
         for sample in dataloader:
             if is_test_dataloader:
-                Xs1, ys1 = sample[:, :-1].type(torch.float32).to(device), sample[:, -1:].type(torch.float32).to(device)
-                
+                Xs1, ys1 = sample[:, :-1].type(torch.float32).to(
+                    device), sample[:, -1:].type(torch.float32).to(device)
+
             else:
                 shape1 = min(batch_size, sample[:, 0:1, :].shape[0])
-                sample1, sample2, sample3 = sample[:, 0:1, :].reshape(shape1, 14), sample[:, 1:2, :].reshape(shape1, 14), sample[:, 2:3, :].reshape(shape1, 14)
-                Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(device), sample1[:, -1:].type(torch.float32).to(device)
-                Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(device), sample2[:, -1:].type(torch.float32).to(device)
-                Xs3, ys3 = sample3[:, :-1].type(torch.float32).to(device), sample3[:, -1:].type(torch.float32).to(device)
-		    
+                sample1, sample2, sample3 = sample[:, 0:1, :].reshape(
+                    shape1, 14), sample[:, 1:2, :].reshape(shape1, 14), sample[:, 2:3, :].reshape(shape1, 14)
+                Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(
+                    device), sample1[:, -1:].type(torch.float32).to(device)
+                Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(
+                    device), sample2[:, -1:].type(torch.float32).to(device)
+                Xs3, ys3 = sample3[:, :-1].type(torch.float32).to(
+                    device), sample3[:, -1:].type(torch.float32).to(device)
+
             pred1 = model(Xs1).to(device)
             predicted_values += list(pred1.argmax(1))
             real_values += list((ys1 - 1).squeeze())
 
             test_loss += loss_fn(pred1, one_hot(ys1, 3, 1)).item()
-            correct += (pred1.argmax(1) == (ys1 - 1).squeeze()).type(torch.float).sum().item()
+            correct += (pred1.argmax(1) == (ys1 - 1).squeeze()
+                        ).type(torch.float).sum().item()
 
     predicted_values = torch.tensor(predicted_values)
     real_values = torch.tensor(real_values)
@@ -290,7 +178,8 @@ def test(dataloader, model, loss_fn, is_test_dataloader):
 
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    print(
+        f"Test Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
     return confusion, 100 * correct
 
@@ -300,39 +189,42 @@ loss_fn = SomSupLoss()
 loss_fn2 = nn.MSELoss()
 optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 
-som = torch.load("pretrained_som1709630916.2606385.pt")
+som = torch.load("pretrained_som1710255005.5160155.pt")
 som.eval()
 
-EPS = 1
-MODS = 1
+EPS = 250
+MODS = 20
 final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
-for kappa in [0, 0.7, 0.8]:
-	for mod_i in range(MODS):
-		print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
-		mlp = NeuralNetwork().to(device)
-		loss_fn = SomSupLoss()
-		loss_fn2 = nn.MSELoss()
-		optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
-		model_losses, model_accs, model_confs, model_train_accs = {}, {}, {}, {}
-		for ep in range(EPS):
-		    print(f"Epoch: {ep + 1}")
-		    losses = train(train_dataloader, mlp, som, loss_fn, optimizer, kappa, ep, EPS)
-		    confusion, acc = test(test_dataloader, mlp, loss_fn2, True)
-		    confision2, train_acc = test(train_dataloader, mlp, loss_fn2, False)
-		    model_losses[ep] = round(float(losses[0].numpy()), 5)
-		    model_accs[ep] = round(acc, 5)
-		    model_train_accs[ep] = round(train_acc, 5)
-		    model_confs[ep] = confusion.tolist()
+for kappa in [0, 0.2, 0.7, 0.1]:
+    for mod_i in range(MODS):
+        print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
+        mlp = NeuralNetwork().to(device)
+        loss_fn = SomSupLoss()
+        loss_fn2 = nn.MSELoss()
+        optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
+        model_losses, model_accs, model_confs, model_train_accs = {}, {}, {}, {}
+        for ep in range(EPS):
+            print(f"Epoch: {ep + 1}")
+            losses = train(train_dataloader, mlp, som,
+                           loss_fn, optimizer, kappa, ep, EPS)
+            confusion, acc = test(test_dataloader, mlp, loss_fn2, True)
+            confision2, train_acc = test(
+                train_dataloader, mlp, loss_fn2, False)
+            model_losses[ep] = round(float(losses[0].numpy()), 5)
+            model_accs[ep] = round(acc, 5)
+            model_train_accs[ep] = round(train_acc, 5)
+            model_confs[ep] = confusion.tolist()
 
-		final_losses[mod_i] = model_losses
-		accs[mod_i] = model_accs
-		train_accs[mod_i] = model_train_accs
-		confs[mod_i] = model_confs
+        final_losses[mod_i] = model_losses
+        accs[mod_i] = model_accs
+        train_accs[mod_i] = model_train_accs
+        confs[mod_i] = model_confs
 
-	training = {"train_loss": final_losses, "train_acc": model_train_accs, "test_acc": accs, "conf_mats": confs}
-	json_object = json.dumps(training, indent=4)
-	if not os.path.isdir("model_results"): 
-		os.makedirs("model_results") 
-	with open(f"model_results/{MODS}models{EPS}eps{kappa}k.json", "w") as outfile:
-		outfile.write(json_object)
+    training = {"train_loss": final_losses,
+                "train_acc": model_train_accs, "test_acc": accs, "conf_mats": confs}
+    json_object = json.dumps(training, indent=4)
+    if not os.path.isdir("model_results"):
+        os.makedirs("model_results")
+    with open(f"model_results/{MODS}models{EPS}eps{kappa}k.json", "w") as outfile:
+        outfile.write(json_object)
