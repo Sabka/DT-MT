@@ -62,9 +62,7 @@ def prepare_datasets(batch_size=30):
     use_of_x_times = 25
     dataset_size = 6650
     dataset_triplets = np.empty((dataset_size, 3, 14))
-    class1, class2, class3 = class1[class_test_size:], 
-    						class2[class_test_size:], 
-    						class3[class_test_size:]
+    class1, class2, class3 = class1[class_test_size:], class2[class_test_size:], class3[class_test_size:]
     position = 0
 
     for i in range(use_of_x_times):

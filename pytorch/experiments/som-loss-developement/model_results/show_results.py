@@ -3,8 +3,9 @@ import os, sys
 
 p = []
 
-for file_name in os.listdir():
-	if "py" not in file_name and "100" in file_name:
+dir = "base-exp-250eps-10hid"
+for file_name in os.listdir(dir):
+	if "json" in file_name:
 		p.append(file_name)
 
 # p = [ "20models100eps0k.json", "20models100eps0.8k.json", "20models100eps0.7k.json", "20models500eps0k.json", "20models500eps0.7k.json", "20models500eps0.5k.json", "20models500eps0.8k.json", "20models50eps-base.json", "20models50eps.json", "10models50eps0.8k.json", "10models50eps0.5k.json", "10models50eps0.2k.json", "10models50eps0.1k.json", "10models50eps0.01k.json", "10models50eps0.001k.json", "20models50eps0.85k.json", "20models50eps0.82k.json", "20models50eps0.78k.json", "20models50eps0.75k.json", "20models50eps0.65k.json", "20models50eps0.9k.json", "20models50eps0.7k.json", "20models50eps0.75k.json", ""]
@@ -31,7 +32,7 @@ class MS:
         self.stds = [(i/len(self.models))**0.5 for i in self.stds]
 
 for i in sorted(p):
-	f = open(i)
+	f = open(dir + "/" + i)
 	data = json.load(f)
 	f.close()
 	
@@ -39,7 +40,8 @@ for i in sorted(p):
 	kappa = kappa[1].split("k")
 	kappa = kappa[0]
 	
-	EPS = 100
+	
+	EPS = 250
 	train = MS(data['train_loss'], EPS)
 	train.fill()
 

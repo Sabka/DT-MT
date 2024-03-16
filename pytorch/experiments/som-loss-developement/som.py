@@ -11,8 +11,7 @@ import json
 
 # UTILS
 
-train_dataloader, test_dataloader, som_dataloader, device = prepare_datasets(
-    batch_size=30)
+train_dataloader, test_dataloader, som_dataloader, device = prepare_datasets(batch_size=30)
 
 
 def show_umatrix(n, m, d, offset=0, fig_file=""):
@@ -76,6 +75,32 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist=[]):
     plt.tight_layout()
 
     plt.show()
+
+
+def show_3_som_stats(all_quant, all_winner, all_entr, fig_file=""):
+
+    eps = len(torch.tensor(all_quant).cpu())+1
+    plt.style.use('bmh')
+    plt.figure(figsize=(12, 4))
+    plt.subplot(131)  # 1 row, 3 columns, 1st subplot
+    plt.plot([i for i in range(1, eps)],
+             torch.tensor(all_quant).cpu())
+    plt.title('Quantizaiton error')
+
+    plt.subplot(132)  # 1 row, 3 columns, 2nd subplot
+    plt.plot([i for i in range(1, eps)], 100 * np.array(all_winner))
+    plt.title('Winner discrimination (%)')
+
+    plt.subplot(133)  # 1 row, 3 columns, 3rd subplot
+    plt.plot([i for i in range(1, len(torch.tensor(all_quant).cpu())+1)], all_entr)
+    plt.title('Entropy')
+
+    plt.tight_layout()
+
+    plt.show()
+
+    if fig_file != "":
+        plt.savefig(fig_file)
 
 
 def show_conf_matrix(confusion, class_labels):
@@ -344,3 +369,8 @@ def pretrain_som():
     with open(f"som-stats-{exp_run_time}.json", "w") as outfile:
         outfile.write(json_object)
 
+def load_show_stats():
+	f = open('som-stats-1710255005.5160155.json')
+	data = json.load(f)
+
+	show_3_som_stats(data['qe'], data['wd'], data['e'], "som-stats.png")
