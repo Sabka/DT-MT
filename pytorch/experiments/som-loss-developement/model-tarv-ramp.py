@@ -37,8 +37,8 @@ class NeuralNetwork(nn.Module):
         super(NeuralNetwork, self).__init__()
         self.flatten = nn.Flatten()  # FIXED
 
-        self.input_layer = nn.Linear(13, 10)
-        self.hid_layer = nn.Linear(10, 3)
+        self.input_layer = nn.Linear(13, 15)
+        self.hid_layer = nn.Linear(15, 3)
         with torch.no_grad():
             nn.init.normal_(self.input_layer.weight, mean=0, std=0.2)
             nn.init.normal_(self.hid_layer.weight, mean=0, std=0.2)
@@ -118,8 +118,20 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
             som_pred2[i] = som_model.predict(Xs2[i])
             som_pred3[i] = som_model.predict(Xs3[i])
 
-        cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampdown of kappa
+        # cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampdown of kappa
         # print("kappa", cur_kappa)
+
+        # cur_kappa = kappa * float(np.exp(-5 *(ep / total_eps)**2)) # sigmoid rampdown
+
+        cur_frac = (ep / total_eps)
+        if cur_frac < 1/5:
+            cur_kappa = kappa * float(np.exp(-5 * (1 - cur_frac / (1/5))**2))
+        elif cur_frac < 1/3:
+            cur_kappa = kappa
+        else:
+            cur_kappa = kappa * \
+                float(np.exp(-5 * ((cur_frac - (1/3)) / (2/3))**2))
+
         loss, sup_loss, som_loss_same_cat, som_loss_dif_cat = loss_fn(pred1, som_pred1, pred2, som_pred2, pred3,
                                                                       som_pred3, ys1, ys2, ys3, cur_kappa, True)
 
@@ -192,11 +204,11 @@ optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 som = torch.load("pretrained_som1710255005.5160155.pt")
 som.eval()
 
-EPS = 250
+EPS = 100
 MODS = 20
 final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
-for kappa in [0, 0.3, 0.9, 0.7]:
+for kappa in [0, 0.2, 0.3, 0.7, 0.9, 1]:
     for mod_i in range(MODS):
         print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
         mlp = NeuralNetwork().to(device)
