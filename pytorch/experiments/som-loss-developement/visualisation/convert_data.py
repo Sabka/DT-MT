@@ -29,12 +29,12 @@ class MS:
 
 ### MODEL
 
-f = open('raw_data/20models500eps0.9k.json')
+f = open('raw_data/20models250eps0.7k.json')
 data = json.load(f)
 f.close()
 
 
-EPS = 500
+EPS = 250
 train = MS(data['train_loss'], EPS)
 train.fill()
 train.write("model_train_loss.txt")
@@ -52,11 +52,11 @@ train.write("model_train_acc.txt")
 
 
 ### BASELINE
-f = open('raw_data/20models500eps0k.json')
+f = open('raw_data/20models250eps0k.json')
 data = json.load(f)
 f.close()
 
-EPS = 500
+EPS = 250
 train = MS(data['train_loss'], EPS)
 train.fill()
 train.write("baseline_train_loss.txt")

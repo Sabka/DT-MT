@@ -3,7 +3,7 @@ import os, sys
 
 p = []
 
-dir = "base-exp-250eps-10hid"
+dir = "."
 for file_name in os.listdir(dir):
 	if "json" in file_name:
 		p.append(file_name)
@@ -41,7 +41,7 @@ for i in sorted(p):
 	kappa = kappa[0]
 	
 	
-	EPS = 250
+	EPS = 100
 	train = MS(data['train_loss'], EPS)
 	train.fill()
 
