@@ -12,11 +12,11 @@ from ucimlrepo import fetch_ucirepo
 import subprocess
 import sys
 import os
-from datasets import prepare_datasets
+from datasets import prepare_zoo_datasets
 from som import SOM
 
 
-train_dataloader, test_dataloader, som_dataloader, device = prepare_datasets(
+train_dataloader, test_dataloader, som_dataloader, device = prepare_zoo_datasets(
     batch_size=30)
 batch_size = 30
 
@@ -36,9 +36,10 @@ class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
         self.flatten = nn.Flatten()  # FIXED
+        self.input_dim = 16
 
-        self.input_layer = nn.Linear(13, 10)
-        self.hid_layer = nn.Linear(10, 3)
+        self.input_layer = nn.Linear(self.input_dim, 10)
+        self.hid_layer = nn.Linear(10, 7)
         with torch.no_grad():
             nn.init.normal_(self.input_layer.weight, mean=0, std=0.2)
             nn.init.normal_(self.hid_layer.weight, mean=0, std=0.2)
@@ -63,9 +64,10 @@ class SomSupLoss(nn.Module):
     def forward(self, pred_x, som_pred_x, pred_c, som_pred_c, pred_i, som_pred_i, targets_x, targets_c, targets_i,
                 kappa, want_som):
         loss_fn = nn.MSELoss(reduction='mean')
+        num_classes = 7
 
         sup_loss = F.mse_loss(pred_x, one_hot(
-            targets_x, 3, 1), reduction='none').mean(dim=1)
+            targets_x, num_classes, 1), reduction='none').mean(dim=1)
 
         if want_som:
             dist_c = torch.sqrt(
@@ -88,13 +90,14 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
     losses = []
     sup_losses = []
     som_losses_same_cat, som_losses_dif_cat = [], []
+    input_dim = 16 + 1
 
     size = len(dataloader.dataset)
     model.train()
     for batch, paired_sample in enumerate(dataloader):
         shape1 = min(batch_size, paired_sample[:, 0:1, :].shape[0])
-        sample1, sample2, sample3 = paired_sample[:, 0:1, :].reshape(shape1, 14), paired_sample[:, 1:2, :].reshape(
-            shape1, 14), paired_sample[:, 2:3, :].reshape(shape1, 14)
+        sample1, sample2, sample3 = paired_sample[:, 0:1, :].reshape(shape1, input_dim), paired_sample[:, 1:2, :].reshape(
+            shape1, input_dim), paired_sample[:, 2:3, :].reshape(shape1, input_dim)
         Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(
             device), sample1[:, -1:].type(torch.float32).to(device)
         Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(
@@ -105,6 +108,7 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
         optimizer.zero_grad()
 
         # Compute prediction error + train som on Xs1, Xs2
+
         pred1 = model(Xs1)
         pred2 = model(Xs2)
         pred3 = model(Xs3)
@@ -141,6 +145,8 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
 
 
 def test(dataloader, model, loss_fn, is_test_dataloader):
+    num_classes = 7
+    input_dim = 17
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -156,7 +162,7 @@ def test(dataloader, model, loss_fn, is_test_dataloader):
             else:
                 shape1 = min(batch_size, sample[:, 0:1, :].shape[0])
                 sample1, sample2, sample3 = sample[:, 0:1, :].reshape(
-                    shape1, 14), sample[:, 1:2, :].reshape(shape1, 14), sample[:, 2:3, :].reshape(shape1, 14)
+                    shape1, input_dim), sample[:, 1:2, :].reshape(shape1, input_dim), sample[:, 2:3, :].reshape(shape1, input_dim)
                 Xs1, ys1 = sample1[:, :-1].type(torch.float32).to(
                     device), sample1[:, -1:].type(torch.float32).to(device)
                 Xs2, ys2 = sample2[:, :-1].type(torch.float32).to(
@@ -168,7 +174,7 @@ def test(dataloader, model, loss_fn, is_test_dataloader):
             predicted_values += list(pred1.argmax(1))
             real_values += list((ys1 - 1).squeeze())
 
-            test_loss += loss_fn(pred1, one_hot(ys1, 3, 1)).item()
+            test_loss += loss_fn(pred1, one_hot(ys1, num_classes, 1)).item()
             correct += (pred1.argmax(1) == (ys1 - 1).squeeze()
                         ).type(torch.float).sum().item()
 
@@ -189,7 +195,7 @@ loss_fn = SomSupLoss()
 loss_fn2 = nn.MSELoss()
 optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 
-som = torch.load("pretrained_som1710255005.5160155.pt")
+som = torch.load("pretrained_som1710877401.4881377.pt")
 som.eval()
 
 EPS = 250

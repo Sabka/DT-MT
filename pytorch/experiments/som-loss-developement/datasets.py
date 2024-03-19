@@ -124,13 +124,14 @@ def prepare_zoo_datasets(batch_size=30):
     som_dataset = []
     train_data_by_classes = {}
     for i in range(num_classes):
-        train_data_by_classes[i+1] = []
+        train_data_by_classes[i] = []
 
     for a in animals:
+        a[-1] -= 1  # rescale class numbers to 0 ... n-1
         if a[0] in test_names:
             test_dataset.append(a[1:])
         else:
-            num_times = [0, 1, 2, 8, 3, 10, 5, 4]
+            num_times = [1, 2, 8, 3, 10, 5, 4]
             for i in range(num_times[a[-1]]):
                 som_dataset.append(a[1:])
             train_data_by_classes[a[-1]].append(a[1:])
@@ -151,8 +152,8 @@ def prepare_zoo_datasets(batch_size=30):
 
     for i in range(use_of_x_times):
 
-        for orig_class in range(1, num_classes+1):
-            for incong_class in range(1, num_classes+1):
+        for orig_class in range(num_classes):
+            for incong_class in range(num_classes):
                 if orig_class == incong_class:
                     continue
 
