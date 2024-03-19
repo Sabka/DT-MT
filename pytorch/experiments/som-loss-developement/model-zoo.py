@@ -195,14 +195,14 @@ loss_fn = SomSupLoss()
 loss_fn2 = nn.MSELoss()
 optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 
-som = torch.load("pretrained_som1710877401.4881377.pt")
+som = torch.load("pretrained_som1710884692.939712.pt")
 som.eval()
 
-EPS = 250
-MODS = 20
+EPS = 200
+MODS = 10
 final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
-for kappa in [0, 0.3, 0.9, 0.7]:
+for kappa in [0.6, 0.7, 0.8, 0.9, 1, 1.5]:
     for mod_i in range(MODS):
         print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
         mlp = NeuralNetwork().to(device)

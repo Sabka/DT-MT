@@ -15,7 +15,7 @@ train_dataloader, test_dataloader, som_dataloader, device = prepare_zoo_datasets
     batch_size=30)
 
 
-def show_umatrix(n, m, d, offset=0, fig_file=""):
+def show_umatrix(n, m, d, offset=0, fig_file="", class_names=[]):
     neuron_classes = []
     percentage = []
     x = []
@@ -34,17 +34,22 @@ def show_umatrix(n, m, d, offset=0, fig_file=""):
             x.append(c)
             y.append(r)
 
+    d = {0: "Mammal", 1: "Bird", 2: "Reptile", 3: "Fish",
+         4: "Amphibian", 5: "Bug", 6: "Invertebrate"}
     plt.figure()
     c = neuron_classes
     s = percentage
     plt.rc('axes', axisbelow=True)
-    plt.xticks(np.arange(-2, n, 1))
-    plt.xlim(-2, n)
+    plt.xticks(np.arange(-4, n, 1))
+    plt.xlim(-4, n)
     plt.yticks(np.arange(-1, m, 1))
     plt.ylim(-1, m)
     plt.grid(linestyle='dashed')
     scatter = plt.scatter(x, y, c=c, s=s, cmap='turbo')
-    plt.legend(*scatter.legend_elements(),
+    legend_handles = scatter.legend_elements()[0]
+    custom_labels = ['Mammal', 'Bird', 'Reptile',
+                     'Fish', 'Amphibian', 'Bug', 'Invertebrate']
+    plt.legend(legend_handles, custom_labels,
                loc="lower left", title="Classes")
     # plt.imshow(neuron_classes, cmap='viridis', interpolation='nearest')
     # plt.colorbar()
@@ -317,8 +322,8 @@ class SOM(nn.Module):
 def pretrain_som():
 
     repeat = True
-    EPS = 300
-    som_size = 6
+    EPS = 50
+    som_size = 8
     exp_run_time = time.time()
     sample_size = 16
 
@@ -379,5 +384,5 @@ def load_show_stats():
     show_3_som_stats(data['qe'], data['wd'], data['e'], "som-stats.png")
 
 
-# pretrain_som()
-load_show_stats()
+pretrain_som()
+# load_show_stats()
