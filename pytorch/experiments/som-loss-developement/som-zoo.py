@@ -378,11 +378,11 @@ def pretrain_som():
 
 
 def load_show_stats():
-    f = open('som-stats-1710877401.4881377.json')
+    f = open('som-stats-1710884692.939712.json')
     data = json.load(f)
 
     show_3_som_stats(data['qe'], data['wd'], data['e'], "som-stats.png")
 
 
-pretrain_som()
-# load_show_stats()
+# pretrain_som()
+load_show_stats()

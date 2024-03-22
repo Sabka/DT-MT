@@ -40,9 +40,9 @@ class NeuralNetwork(nn.Module):
 
         self.input_layer = nn.Linear(self.input_dim, 10)
         self.hid_layer = nn.Linear(10, 7)
-        with torch.no_grad():
-            nn.init.normal_(self.input_layer.weight, mean=0, std=0.2)
-            nn.init.normal_(self.hid_layer.weight, mean=0, std=0.2)
+        # with torch.no_grad():
+        #    nn.init.normal_(self.input_layer.weight, mean=0, std=0.2)
+        #    nn.init.normal_(self.hid_layer.weight, mean=0, std=0.2)
 
         self.layers = nn.Sequential(
             self.input_layer,
@@ -67,7 +67,7 @@ class SomSupLoss(nn.Module):
         num_classes = 7
 
         sup_loss = F.mse_loss(pred_x, one_hot(
-            targets_x, num_classes, 1), reduction='none').mean(dim=1)
+            targets_x, num_classes, 0), reduction='none').mean(dim=1)
 
         if want_som:
             dist_c = torch.sqrt(
@@ -172,10 +172,10 @@ def test(dataloader, model, loss_fn, is_test_dataloader):
 
             pred1 = model(Xs1).to(device)
             predicted_values += list(pred1.argmax(1))
-            real_values += list((ys1 - 1).squeeze())
+            real_values += list((ys1).squeeze())
 
-            test_loss += loss_fn(pred1, one_hot(ys1, num_classes, 1)).item()
-            correct += (pred1.argmax(1) == (ys1 - 1).squeeze()
+            test_loss += loss_fn(pred1, one_hot(ys1, num_classes, 0)).item()
+            correct += (pred1.argmax(1) == (ys1).squeeze()
                         ).type(torch.float).sum().item()
 
     predicted_values = torch.tensor(predicted_values)
@@ -198,11 +198,12 @@ optimizer = torch.optim.Adam(mlp.parameters(), lr=0.0001)
 som = torch.load("pretrained_som1710884692.939712.pt")
 som.eval()
 
-EPS = 200
-MODS = 10
+EPS = 5
+MODS = 1
 final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
-for kappa in [0.6, 0.7, 0.8, 0.9, 1, 1.5]:
+for kappa in [0.2]:  # [0, 0.1, 0.2, 0.3, 0.4, 0.5]:
+
     for mod_i in range(MODS):
         print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
         mlp = NeuralNetwork().to(device)
