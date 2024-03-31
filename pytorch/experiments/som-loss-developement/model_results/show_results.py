@@ -3,7 +3,7 @@ import os, sys
 
 p = []
 
-dir = "."
+dir = "zoo_results"
 for file_name in os.listdir(dir):
 	if "json" in file_name:
 		p.append(file_name)
@@ -53,7 +53,7 @@ for i in sorted(p):
 	train_acc = MS({ "0": data['train_acc']}, EPS)
 	train.fill()
 
-	print(f"${kappa}$ &   ${round(train.means[-1],3)}	\pm {round(train.stds[-1],3)} $  &  ${round(test.means[-1], 2)}	\pm {round(test.stds[-1], 2)}$  \\\ \\hline")		
+	print(f"${i}$ &   ${round(train.means[-1],3)}	\pm {round(train.stds[-1],3)} $  &  ${round(test.means[-1], 2)}	\pm {round(test.stds[-1], 2)}$  \\\ \\hline")		
 
 
 """
