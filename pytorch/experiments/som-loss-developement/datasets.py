@@ -4,14 +4,11 @@ import numpy as np
 from ucimlrepo import fetch_ucirepo
 import subprocess
 import sys
+import pandas as pd
 
 
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-
-install("ucimlrepo")  # install wine dataset repo
-install("seaborn")
 
 
 def generate_triplet(x, class1, class2):
@@ -21,6 +18,9 @@ def generate_triplet(x, class1, class2):
 
 
 def prepare_datasets(batch_size=30):
+
+    install("ucimlrepo")  # install wine dataset repo
+    install("seaborn")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -62,7 +62,8 @@ def prepare_datasets(batch_size=30):
     use_of_x_times = 25
     dataset_size = 6650
     dataset_triplets = np.empty((dataset_size, 3, 14))
-    class1, class2, class3 = class1[class_test_size:], class2[class_test_size:], class3[class_test_size:]
+    class1, class2, class3 = class1[class_test_size:
+                                    ], class2[class_test_size:], class3[class_test_size:]
     position = 0
 
     for i in range(use_of_x_times):
@@ -95,4 +96,73 @@ def prepare_datasets(batch_size=30):
     print(f"som data size: {len(som_dataloader)}")
 
     return train_dataloader, test_dataloader, som_dataloader, device
-    
+
+
+def prepare_zoo_datasets(batch_size=30):
+    np.random.seed(4742)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    num_classes = 7
+
+    classes = pd.read_csv('zoo-dataset/class.csv')
+    animals = pd.read_csv('zoo-dataset/zoo.csv')
+    classes = classes.to_numpy()
+    animals = animals.to_numpy()
+
+    # split to test and train samples
+
+    test_names = []
+    train_names = []
+    for i in range(num_classes):
+        names = classes[i][3].split(", ")
+        np.random.shuffle(names)
+        test_names += names[:2]
+        train_names += names[2:]
+    print(len(train_names), len(test_names))
+
+    test_dataset = []
+    som_dataset = []
+    train_data_by_classes = {}
+    for i in range(num_classes):
+        train_data_by_classes[i] = []
+
+    for a in animals:
+        a[-1] -= 1  # rescale class numbers to 0 ... n-1
+        if a[0] in test_names:
+            test_dataset.append(a[1:])
+        else:
+            num_times = [1, 2, 8, 3, 10, 5, 4]
+            for i in range(num_times[a[-1]]):
+                som_dataset.append(a[1:])
+            train_data_by_classes[a[-1]].append(a[1:])
+
+    print(len(som_dataset), len(test_dataset))
+
+    test_dataloader = DataLoader(torch.tensor(np.array(test_dataset).astype(
+        int)).to(device), batch_size=batch_size, shuffle=True)
+
+    som_dataloader = DataLoader(torch.tensor(np.array(som_dataset).astype(
+        int)).to(device), shuffle=True)
+
+    # train dataset
+    use_of_x_times = 15
+    dataset_size = 7830
+    train_dataset = np.empty((dataset_size, 3, 17))
+    position = 0
+
+    for i in range(use_of_x_times):
+
+        for orig_class in range(num_classes):
+            for incong_class in range(num_classes):
+                if orig_class == incong_class:
+                    continue
+
+                for orig_sample in train_data_by_classes[orig_class]:
+                    train_dataset[position] = generate_triplet(
+                        orig_sample, np.array(train_data_by_classes[orig_class]), np.array(train_data_by_classes[incong_class]))
+                    position += 1
+
+    train_dataloader = DataLoader(torch.tensor(np.array(train_dataset).astype(
+        int)).to(device), batch_size=batch_size, shuffle=True)
+
+    return train_dataloader, test_dataloader, som_dataloader, device
