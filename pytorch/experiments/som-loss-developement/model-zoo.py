@@ -122,8 +122,7 @@ def train(dataloader, model, som_model, loss_fn, optimizer, kappa, ep, total_eps
             som_pred2[i] = som_model.predict(Xs2[i])
             som_pred3[i] = som_model.predict(Xs3[i])
 
-        cur_kappa = kappa * float(np.exp(-5 *(ep / total_eps)**2)) 
-        # cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampdown of kappa
+        cur_kappa = kappa * (1 - (ep / total_eps))  # linear rampdown of kappa
         # print("kappa", cur_kappa)
         loss, sup_loss, som_loss_same_cat, som_loss_dif_cat = loss_fn(pred1, som_pred1, pred2, som_pred2, pred3,
                                                                       som_pred3, ys1, ys2, ys3, cur_kappa, True)
@@ -203,7 +202,7 @@ EPS = 200
 MODS = 10
 final_losses, accs, train_accs, confs = {}, {}, {}, {}
 tm = time.time()
-for kappa in [0, 0.25, 0.5, 0.75, 1]:  # [0, 0.1, 0.2, 0.3, 0.4, 0.5]:
+for kappa in [0, 0.25, 0.5, 0.75, 1]:
 
     for mod_i in range(MODS):
         print(f"{mod_i + 1}. model starts in {tm - time.time()} sec")
@@ -232,7 +231,7 @@ for kappa in [0, 0.25, 0.5, 0.75, 1]:  # [0, 0.1, 0.2, 0.3, 0.4, 0.5]:
     training = {"train_loss": final_losses,
                 "train_acc": model_train_accs, "test_acc": accs, "conf_mats": confs}
     json_object = json.dumps(training, indent=4)
-    if not os.path.isdir("zoo_results"):
-        os.makedirs("zoo_results")
-    with open(f"zoo_results/{MODS}models{EPS}eps{kappa}k-gauss.json", "w") as outfile:
+    if not os.path.isdir("zoo_results_linear_ramp"):
+        os.makedirs("zoo_results_linear_ramp")
+    with open(f"zoo_results_linear_ramp/{MODS}models{EPS}eps{kappa}k-gauss.json", "w") as outfile:
         outfile.write(json_object)

@@ -286,17 +286,11 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist = [], name="tmp"):
   # plt.show()
   plt.savefig(name, bbox_inches='tight')
 
-"""from time import time as tm
+from time import time as tm
 EPS = 100
-n = 8
+n = 10
 som = SOM(n, n, 3*32*32, EPS, {})
 som.train()
-
-#torch.save(som, f'models/1.pt')
-#print(som.parameters())
-#for param_tensor in som.parameters():
-#    print(param_tensor, "\t", param_tensor.shape )
-#print("MODEL SAVED")
 
 all_quant = []
 all_winner = []
@@ -320,14 +314,14 @@ for ep in range(EPS):
       cur_quant_err, cur_winner_discrimination, cur_entropy, dists = som.save_som_stats()
   if ep % 5 == 4:
     show_umatrix(n, n, som.d, 0, f"figs/saved-cifar10-{n}n-{ep}ep.png")
-    # show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/saved-cifar10-{n}n-{ep}ep-stat.png")
-  if True: # 69 <= ep <= 79:
-    torch.save(som.weights, f'models/cifar10-{n}n-{ep}ep.pt')
+    show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists, f"figs/saved-cifar10-{n}n-{ep}ep-stat.png")
+  if 69 <= ep <= 99:
+    torch.save(som.weights, f'models/cifar10-{n}n-{ep}ep-new.pt')
   with open("cifar10-som.log", "a") as a:
     a.write(f"n={n}\n\t{som.all_quant_err}\n\t{som.all_winner}\n\t{som.all_entr}\n\t{som.all_dists}\n\t{som.d}\n")
-  """
-
   
+
+""" 
 from time import time as tm  
 EPS = 100
 for n in [8, 15]:
@@ -371,5 +365,5 @@ for n in [8, 15]:
     # ds.append(som.d)
 
 
-# show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)
+# show_som_stats(som.all_quant_err, som.all_winner, som.all_entr, som.all_dists)"""
 

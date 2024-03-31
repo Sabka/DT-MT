@@ -3,7 +3,7 @@ import os, sys
 
 p = []
 
-dir = "zoo_results"
+dir = "."
 for file_name in os.listdir(dir):
 	if "json" in file_name:
 		p.append(file_name)
@@ -41,7 +41,7 @@ for i in sorted(p):
 	kappa = kappa[0]
 	
 	
-	EPS = 100
+	EPS = 200
 	train = MS(data['train_loss'], EPS)
 	train.fill()
 
