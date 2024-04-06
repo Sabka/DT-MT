@@ -1,8 +1,26 @@
-# DT-MT
+# Diploma thesis - Semisupervised learning of deep neural networks
 
-How to use screen on Neptun?
+This repo contains implementation of experiments for my diploma thesis. The title of my thesis is Semisupervised learning of deep neural networks.
+I created several experiments, each in separate folder in folder pytorch/experiments.
 
-`screen` 
+Short description of experiments:
+  1. bmt-animacy: Experiment test performance of semisupervised model Binary Mean Teacher on binary classification task. Experiment investigate model further, with standard image dataset CIFAR10. We focused on experimentation with different**very small** portions of labeled data, in which BMT model achieve much better performance than supervised baseline.
+  2. cifar-vs-fv-som-visualizations: **TODO**
+  3. som-loss-developement: **TODO**
+  4. semisup: **TODO**
+
+
+I run this experiment on GPU servers at FMFI UK, so it can be useful for my colegues to describe how I run it:
+
+1. Conda environment - since we do not install all needed packages or libs locally, we use conda environments. For this project, it is possible to create such env like this:
+
+
+: **TODO**
+  
+
+2. How to use screen?
+
+`screen -S name-of-the-screen` 
 
 run command to be execute
 
@@ -12,11 +30,8 @@ to return to screen
 
 `screen -ls` - list of all screens, find id
 
-`screen -r [id/nothing]`
+`screen -r [id/name]`
 
 to terminate screen - `ctrl + D`
 
 
-
-# RUN TRAINING w LOGGING TO FILE
-`python main.py     --dataset cifar10     --labels data-local/labels/cifar10/1000_balanced_labels/00.txt     --arch cifar_sarmad     --consistency 100.0     --consistency-rampup 5     --labeled-batch-size 62     --epochs 180     --lr-rampdown-epochs 210 2>&1 | tee curlog.txt`
