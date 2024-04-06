@@ -15,7 +15,7 @@ I run this experiment on GPU servers at FMFI UK, so it can be useful for my cole
 1. Conda environment - since we do not install all needed packages or libs locally, we use conda environments. For this project, it is possible to create such env like this:
 
 
-: **TODO**
+`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee`
   
 
 2. How to use screen?
