@@ -299,7 +299,7 @@ def train_som(args, EPS=100, szs=[10], in_dim=128):
             if ep % 5 == 4:
                 show_umatrix(n, n, som.d, 0, f"figs/fv-{n}n-{ep}ep.png")
                 if 50 < ep < 101:
-                    torch.save(som, f"pretrained_som-{ep}ep.pt")
+                    torch.save(som, f"fv_som_results/pretrained_som-{ep}ep.pt")
                 show_som_stats(som.all_quant_err, som.all_winner, som.all_entr,
                                som.all_dists, f"figs/fv-{n}n-{ep}ep-stat.png")
                 # print(som.d)

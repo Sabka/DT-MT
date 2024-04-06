@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 
 import numpy as np
@@ -25,6 +26,7 @@ from torch.utils.data import DataLoader
 import torchvision.datasets
 
 from som_from_fv import SOM
+from time import *
 
 np.random.seed(5)
 torch.manual_seed(5)
@@ -66,7 +68,7 @@ def main(args):
     global best_prec1
 
     som, model = load_models_from_pts(args)
-    kappa = 0.5
+    kappa = 100
 
     train_transform = data.TransformTwice(transforms.Compose([
         data.RandomTranslateWithReflect(4),
@@ -146,44 +148,59 @@ def main(args):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 
-    test_writer = SummaryWriter(os.path.join(save_path, 'test'))
+    if args.saveX == True:
+        test_writer = SummaryWriter(os.path.join(save_path, 'test'))
+
+    prec1 = validate(eval_loader, model)
+
+    ema_prec1 = validate(eval_loader, ema_model)
+
+    print('Initial accuracy of the Student network on the 10000 test images: %d %%' % (
+        prec1))
+    print('Initial accuracy of the Teacher network on the 10000 test images: %d %%' % (
+        ema_prec1))
+
+    train_losses = {"total": [], "sup": [], "som": []}
+    eval_accs = {"student": [], "teacher": []}
 
     for epoch in range(args.start_epoch, args.epochs):
-        print(f"EPOCH {epoch}")
-        train(train_loader, model, ema_model, som,
-              optimizer, epoch, args.epochs, kappa)
+
+        lss, rl, epoch_loss = train(train_loader, model, ema_model, som,
+                                    optimizer, epoch, args.epochs, kappa)
+        print(
+            f'EPOCH LOSSES tot:{round(epoch_loss["total"]/10,2)}\tsup:{round(epoch_loss["sup"]/10, 2)}\tsom:{round(epoch_loss["som"]/10, 2)}')
+
+        train_losses["total"].append((epoch_loss["total"]/10))
+        train_losses["sup"].append((epoch_loss["sup"]/10))
+        train_losses["som"].append((epoch_loss["som"]/10))
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             prec1 = validate(eval_loader, model)
 
             ema_prec1 = validate(eval_loader, ema_model)
 
+            eval_accs["student"].append(prec1)
+            eval_accs["teacher"].append(ema_prec1)
+
             print('Accuracy of the Student network on the 10000 test images: %d %%' % (
                 prec1))
             print('Accuracy of the Teacher network on the 10000 test images: %d %%' % (
                 ema_prec1))
-            test_writer.add_scalar('Accuracy Student', prec1, epoch)
-            test_writer.add_scalar('Accuracy Teacher', ema_prec1, epoch)
+            if args.saveX == True:
+                test_writer.add_scalar('Accuracy Student', prec1, epoch)
+                test_writer.add_scalar('Accuracy Teacher', ema_prec1, epoch)
 
             is_best = ema_prec1 > best_prec1
             best_prec1 = max(ema_prec1, best_prec1)
         else:
             is_best = False
 
-        print(epoch, args.checkpoint_epochs, (epoch + 1) %
-              args.checkpoint_epochs == 0)
-        if args.checkpoint_epochs and (epoch + 1) % args.checkpoint_epochs == 0:
-            print("SAVING CHECKPOINT")
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'global_step': global_step,
-                'arch': args.model,
-                'state_dict': model.state_dict(),
-                'ema_state_dict': ema_model.state_dict(),
-                'best_prec1': best_prec1,
-                'optimizer': optimizer.state_dict(),
-            }, is_best, save_path, epoch + 1)
-            return
+        training = {"train_loss": train_losses, "test_acc": eval_accs}
+        json_object = json.dumps(training, indent=4)
+        if not os.path.isdir("mt_som_results"):
+            os.makedirs("mt_som_results")
+        with open(f"mt_som_results/{args.epochs}eps{kappa}k.json", "w") as outfile:
+            outfile.write(json_object)
 
 
 def update_ema_variables(model, ema_model, alpha, global_step):
@@ -193,9 +210,12 @@ def update_ema_variables(model, ema_model, alpha, global_step):
 
 
 def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kappa):
+
     global global_step
     lossess = AverageMeter()
     running_loss = 0.0
+    epoch_loss = {'total': 0.0, 'som': 0.0, 'sup': 0.0}
+    init_time = time()
 
     class_criterion = nn.CrossEntropyLoss(
         reduction='sum', ignore_index=NO_LABEL).to(args.device)
@@ -222,6 +242,7 @@ def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kapp
             model_out = model(input_var)
 
         class_loss = class_criterion(model_out, target_var) / minibatch_size
+        epoch_loss['sup'] += class_loss.item()
 
         if not args.supervised_mode:
             with torch.no_grad():
@@ -255,10 +276,12 @@ def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kapp
                 som_loss_fn = SomLoss()
                 som_loss = som_loss_fn(som_pred1, som_pred2, cur_kappa)
                 consistency_loss = consistency_weight * som_loss / minibatch_size
+                epoch_loss['som'] += consistency_loss.item()
             else:
                 consistency_loss = 0
 
             loss = class_loss + consistency_loss
+            epoch_loss['total'] += loss.item()
         else:
             loss = class_loss
         assert not (np.isnan(loss.item()) or loss.item() >
@@ -274,14 +297,14 @@ def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kapp
         # print statistics
         running_loss += loss.item()
 
-        if i % 1 == 0:    # print every 20 mini-batches
-            print('[Epoch: %d, Iteration: %5d] loss: %.5f' %
-                  (epoch + 1, i + 1, running_loss / 20))
+        if i == 0 or i % 20 == 20-1:    # print every 20 mini-batches
+            print('[Epoch: %d/%d, Iteration: %5d] loss: %.5f epoch time %.1f' %
+                  (epoch + 1, args.epochs, i + 1, running_loss / 20, time() - init_time))
             running_loss = 0.0
 
         lossess.update(loss.item(), input.size(0))
 
-    return lossess, running_loss
+    return lossess, running_loss, epoch_loss
 
 
 def validate(eval_loader, model):
@@ -331,5 +354,7 @@ if __name__ == '__main__':
 
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu")
+
+    args.saveX = False
 
     main(args)
