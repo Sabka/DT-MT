@@ -5,9 +5,9 @@ I created several experiments, each in separate folder in folder pytorch/experim
 
 Short description of experiments:
   1. bmt-animacy: Experiment test performance of semisupervised model Binary Mean Teacher on binary classification task. Experiment investigate model further, with standard image dataset CIFAR10. We focused on experimentation with different**very small** portions of labeled data, in which BMT model achieve much better performance than supervised baseline.
-  2. cifar-vs-fv-som-visualizations: **TODO**
-  3. som-loss-developement: **TODO**
-  4. semisup: **TODO**
+  2. cifar-vs-fv-som-visualizations: In this experiment we compared qualitative and quantitative metrices of Self-organizing map with two input types - vanilla CIFAR10 dataset and feature vectors of CIFAR10 from pretrained Mean Teacher. 
+  3. som-loss-developement: In this experiment, we focused on developement of unsupervised SOM based loss function. We tested performance in supervised setup.
+  4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is combination of Mean Teacher model and introduced SOM loss.
 
 
 I run this experiment on GPU servers at FMFI UK, so it can be useful for my colegues to describe how I run it:
