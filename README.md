@@ -9,7 +9,7 @@ Short description of experiments:
   3. som-loss-developement: In this experiment, we focused on developement of unsupervised SOM based loss function. We tested performance in supervised setup.
   4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is combination of Mean Teacher model and introduced SOM loss.
 
-In some experiments, preparation of CIFAR10 dataset batches is needed. The code expects to find the data in specific directories inside the data-local directory. You can prepare the CIFAR-10 in the experimnet forder with  command:
+In some experiments, preparation of CIFAR10 dataset batches is needed. The code expects to find the data in specific directories inside the data-local directory. You can prepare the CIFAR10 in the experimnet forder with  command:
 
 ```
 ./data-local/bin/prepare_cifar10.sh
@@ -21,9 +21,12 @@ I run this experiment on GPU servers at FMFI UK, so it can be useful for my cole
 1. Conda environment - since we do not install all needed packages or libs locally, we use conda environments. For this project, it is possible to create such env like this:
 
 create env mt2:
-`conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee`
+```
+conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee
+```
 
-activate env: `conda activate mt2`
+activate env: 
+```conda activate mt2```
   
 
 2. How to use screen?
