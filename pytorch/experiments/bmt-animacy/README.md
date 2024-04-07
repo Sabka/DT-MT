@@ -2,6 +2,8 @@
 
 Code is adapted from https://github.com/iSarmad/MeanTeacher-SNTG-HybridNet, which contain MT model architecture and training setup. I changed MT model to BMT model, keep some parts of training setup, and changed task to binary classification of animate and inanimate objects.
 
+In this repo folder containing dataset is missing (too big for repo).
+
 ## How to create dataset for binary classification of animate vs. inanimate objects ?
 - rename `0data-local` to `data-local`
 - in folder data-local/bin run `python3 unpack_cifar10.py . .`, this downloads data
@@ -24,8 +26,23 @@ We can then run BMT model by command `python3 main.py`.
 
 
 ## Setup virtual environment
-I used conda environment in our machines. Steps for setuping env are in the root folder in README.
+I used conda environment in our machines. Here are steps for its setup.
 
+- download conda to home folder from https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html 
+- run `conda init`
+
+- create env:
+- `conda create --name torch_cuda`
+- `conda install -n torch_cuda  pytorch-gpu torchvision cudatoolkit=11.1 -c conda-forge`
+- `conda install -n mt tqdm`
+- `conda install -c anaconda scikit-learn`
+- `conda install -c conda-forge matplotlib`
+
+- or just:
+
+- `conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee`
+
+and activate env by : `conda activate torch_cuda`
 
 # main changes of Sarmads code
 - async -> remove async
