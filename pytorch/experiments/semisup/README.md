@@ -1,3 +1,5 @@
+## MT-SOM experiment
+
 This folder contain implementation of our model MT-SOM which is semisupervised model inspired by Mean Teacher model. The difference is in consistency loss. MT-SOM model use loss based on Self-organizing map model. This consistency loss is called SOM loss and is the euclidian distance of winner neurons of feature vectors of student and teacher model from MT.
 
 In this folder we also implement experiment - classification of CIFAR10 dataset with 4000 labeled samples.
