@@ -9,6 +9,12 @@ Short description of experiments:
   3. som-loss-developement: In this experiment, we focused on developement of unsupervised SOM based loss function. We tested performance in supervised setup.
   4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is combination of Mean Teacher model and introduced SOM loss.
 
+In some experiments, preparation of CIFAR10 dataset batches is needed. The code expects to find the data in specific directories inside the data-local directory. You can prepare the CIFAR-10 in the experimnet forder with  command:
+
+```
+./data-local/bin/prepare_cifar10.sh
+``` 
+
 
 I run this experiment on GPU servers at FMFI UK, so it can be useful for my colegues to describe how I run it:
 
