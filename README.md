@@ -1,8 +1,37 @@
-# DT-MT
+# Diploma thesis - Semisupervised learning of deep neural networks
 
-How to use screen on Neptun?
+This repo contains implementation of experiments for my diploma thesis. The title of my thesis is Semisupervised learning of deep neural networks.
+I created several experiments, each in separate folder in folder pytorch/experiments.
 
-`screen` 
+Short description of experiments:
+  1. bmt-animacy: Experiment test performance of semisupervised model Binary Mean Teacher on binary classification task. Experiment investigate model further, with standard image dataset CIFAR10. We focused on experimentation with different**very small** portions of labeled data, in which BMT model achieve much better performance than supervised baseline.
+  2. cifar-vs-fv-som-visualizations: In this experiment we compared qualitative and quantitative metrices of Self-organizing map with two input types - vanilla CIFAR10 dataset and feature vectors of CIFAR10 from pretrained Mean Teacher. 
+  3. som-loss-developement: In this experiment, we focused on developement of unsupervised SOM based loss function. We tested performance in supervised setup.
+  4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is combination of Mean Teacher model and introduced SOM loss.
+
+In some experiments, preparation of CIFAR10 dataset batches is needed. The code expects to find the data in specific directories inside the data-local directory. You can prepare the CIFAR10 in the experimnet forder with  command:
+
+```
+./data-local/bin/prepare_cifar10.sh
+``` 
+
+
+I run this experiment on GPU servers at FMFI UK, so it can be useful for my colegues to describe how I run it:
+
+1. Conda environment - since we do not install all needed packages or libs locally, we use conda environments. For this project, it is possible to create such env like this:
+
+create env mt2:
+```
+conda install -n mt2  pytorch-gpu torchvision matplotlib tqdm scikit-learn cudatoolkit=11.1 -c conda-forgee
+```
+
+activate env: 
+```conda activate mt2```
+  
+
+2. How to use screen?
+
+`screen -S name-of-the-screen` 
 
 run command to be execute
 
@@ -12,11 +41,8 @@ to return to screen
 
 `screen -ls` - list of all screens, find id
 
-`screen -r [id/nothing]`
+`screen -r [id/name]`
 
 to terminate screen - `ctrl + D`
 
 
-
-# RUN TRAINING w LOGGING TO FILE
-`python main.py     --dataset cifar10     --labels data-local/labels/cifar10/1000_balanced_labels/00.txt     --arch cifar_sarmad     --consistency 100.0     --consistency-rampup 5     --labeled-batch-size 62     --epochs 180     --lr-rampdown-epochs 210 2>&1 | tee curlog.txt`
