@@ -42,11 +42,16 @@ class SomLoss(nn.Module):
     def __init__(self):
         super(SomLoss, self).__init__()
 
-    def forward(self, som_pred1, som_pred2, kappa):
+    def forward(self, input1, input2, som_pred1, som_pred2, som_pred1_loc, som_pred2_loc, kappa, psi):
+        input1 = input1.reshape((256, 128))
+        input2 = input2.reshape((256, 128))
 
-        dist = torch.sqrt(
-            torch.sum(torch.pow(som_pred1 - som_pred2, 2), dim=1))
-        som_loss = (kappa * dist).nanmean()
+        dist_on_map = torch.sqrt(
+            torch.sum(torch.pow(som_pred1_loc - som_pred2_loc, 2), dim=1))
+        dist_in_nd_space = torch.sqrt(
+            torch.sum(torch.pow(som_pred1 - input1, 2), dim=1)) + torch.sqrt(
+            torch.sum(torch.pow(som_pred2 - input2, 2), dim=1))
+        som_loss = (kappa * (dist_on_map + psi * dist_in_nd_space)).nanmean()
         return som_loss
 
 
@@ -68,7 +73,8 @@ def main(args):
     global best_prec1
 
     som, model = load_models_from_pts(args)
-    kappa = 100
+    kappa = args.kappa
+    psi = args.psi
 
     train_transform = data.TransformTwice(transforms.Compose([
         data.RandomTranslateWithReflect(4),
@@ -166,7 +172,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
 
         lss, rl, epoch_loss = train(train_loader, model, ema_model, som,
-                                    optimizer, epoch, args.epochs, kappa)
+                                    optimizer, epoch, args.epochs, kappa, psi)
         print(
             f'EPOCH LOSSES tot:{round(epoch_loss["total"]/10,2)}\tsup:{round(epoch_loss["sup"]/10, 2)}\tsom:{round(epoch_loss["som"]/10, 2)}')
 
@@ -199,7 +205,7 @@ def main(args):
         json_object = json.dumps(training, indent=4)
         if not os.path.isdir("mt_som_results"):
             os.makedirs("mt_som_results")
-        with open(f"mt_som_results/{args.epochs}eps{kappa}k.json", "w") as outfile:
+        with open(f"mt_som_results/{args.epochs}eps{kappa}k{psi}psi.json", "w") as outfile:
             outfile.write(json_object)
 
 
@@ -209,7 +215,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
         ema_param.data = ema_param.data * alpha + (1 - alpha) * param.data
 
 
-def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kappa):
+def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kappa, psi):
 
     global global_step
     lossess = AverageMeter()
@@ -265,16 +271,20 @@ def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kapp
                 shape1 = min(minibatch_size, input[:, 0:1, :].shape[0])
                 som_pred1 = torch.empty(shape1, 2).to(args.device)
                 som_pred2 = torch.empty(shape1, 2).to(args.device)
+                som_pred1_weights = torch.empty(shape1, 128).to(args.device)
+                som_pred2_weights = torch.empty(shape1, 128).to(args.device)
 
                 for j in range(len(ema_h)):
-                    _, som_pred1[j] = som.predict(model_h[j])
-                    _, som_pred2[j] = som.predict(ema_h[j])
+                    som_pred1_weights[j], som_pred1[j] = som.predict(
+                        model_h[j])
+                    som_pred2_weights[j], som_pred2[j] = som.predict(ema_h[j])
 
                 # linear rampdown of kappa
                 cur_kappa = kappa * (1 - (epoch / total_eps))
 
                 som_loss_fn = SomLoss()
-                som_loss = som_loss_fn(som_pred1, som_pred2, cur_kappa)
+                som_loss = som_loss_fn(model_h, ema_h, som_pred1_weights,
+                                       som_pred2_weights, som_pred1, som_pred2, cur_kappa, psi)
                 consistency_loss = consistency_weight * som_loss / minibatch_size
                 epoch_loss['som'] += consistency_loss.item()
             else:
@@ -356,5 +366,16 @@ if __name__ == '__main__':
         "cuda" if torch.cuda.is_available() else "cpu")
 
     args.saveX = False
+    args.lr = 0.2
+    args.kappa = 1
+    args.psi = 1
 
+    args.kappa = 0
+    args.psi = 0
     main(args)
+
+    for psi in [10, 0.1, 1]:
+        for kappa in [0.1, 5, 1]:
+            args.kappa = kappa
+            args.psi = psi
+            main(args)
