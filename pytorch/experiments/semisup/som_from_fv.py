@@ -267,7 +267,7 @@ def show_som_stats(all_quant, all_winner, all_entr, all_dist=[], name="tmp"):
 def train_som(args, EPS=100, szs=[10], in_dim=128):
 
     fv, lab = fv_from_checkpoint(
-        args, "ckpts/cifar10/04-02-14:49/convlarge,Adam,200epochs,b256,lr0.2/checkpoint.10.ckpt")
+        args, "ckpts/cifar10/04-02-14:49/convlarge,Adam,200epochs,b256,lr0.2/checkpoint.10.ckpt") # for 1000 lab "ckpts/cifar10/04-12-14:25/convlarge,Adam,200epochs,b256,lr0.2/checkpoint.10.ckpt"
 
     # training SOM
 
