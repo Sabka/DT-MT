@@ -1,13 +1,13 @@
-# Diploma thesis - Semisupervised learning of deep neural networks
+# Diploma thesis - Auxiliary self-organization-based loss for semi-supervised learning
 
-This repo contains implementation of experiments for my diploma thesis. The title of my thesis is Semisupervised learning of deep neural networks.
-I created several experiments, each in separate folder in folder pytorch/experiments.
+This repo contains implementation of experiments for my diploma thesis. The title of my thesis is Auxiliary self-organization-based loss for semi-supervised learning.
+I created several experiments, each in separate folder in folder pytorch/experiments with existed models and also with novel models MLP-SOM and MT-SOM that we proposed.
 
 Short description of experiments:
   1. bmt-animacy: Experiment test performance of semisupervised model Binary Mean Teacher on binary classification task. Experiment investigate model further, with standard image dataset CIFAR10. We focused on experimentation with different**very small** portions of labeled data, in which BMT model achieve much better performance than supervised baseline.
   2. cifar-vs-fv-som-visualizations: In this experiment we compared qualitative and quantitative metrices of Self-organizing map with two input types - vanilla CIFAR10 dataset and feature vectors of CIFAR10 from pretrained Mean Teacher. 
-  3. som-loss-developement: In this experiment, we focused on developement of unsupervised SOM based loss function. We tested performance in supervised setup.
-  4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is combination of Mean Teacher model and introduced SOM loss.
+  3. som-loss-developement: In this experiment, we focused on unsupervised SOM-based loss function. We used this loss function in our model MLP-SOM and tested its performance in supervised setup.
+  4. semisup: It this final experiment, we implemented and tested model MT-SOM witch is based on Mean Teacher model and use proposed SOM-based loss function.
 
 In some experiments, preparation of CIFAR10 dataset batches is needed. The code expects to find the data in specific directories inside the data-local directory. You can prepare the CIFAR10 in the experimnet forder with  command:
 
