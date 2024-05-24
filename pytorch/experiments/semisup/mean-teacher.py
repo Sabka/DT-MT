@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 
 import numpy as np
 import torch
@@ -37,6 +38,7 @@ global_step = 0
 def main(args):
     global global_step
     global best_prec1
+
 
 
     train_transform = data.TransformTwice(transforms.Compose([
@@ -122,16 +124,25 @@ def main(args):
             os.makedirs(save_path)
 
     test_writer = SummaryWriter(os.path.join(save_path, 'test'))
-
+	
+    train_losses = {"total": [], "sup": [], "som": []}
+    eval_accs = {"student": [], "teacher": []}
 
     for epoch in range(args.start_epoch, args.epochs):
-        train(train_loader, model, ema_model, optimizer, epoch)
+        lss, rl, epoch_loss = train(train_loader, model, ema_model, optimizer, epoch)
+        
+        train_losses["total"].append((epoch_loss["total"]/10))
+        train_losses["sup"].append((epoch_loss["sup"]/10))
+        train_losses["som"].append((epoch_loss["som"]/10))
 
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
+            
             prec1 = validate(eval_loader, model)
-
             ema_prec1 = validate(eval_loader, ema_model)
+            
+            eval_accs["student"].append(prec1)
+            eval_accs["teacher"].append(ema_prec1)
 
             print('Accuracy of the Student network on the 10000 test images: %d %%' % (
                 prec1))
@@ -155,6 +166,13 @@ def main(args):
                 'best_prec1': best_prec1,
                 'optimizer' : optimizer.state_dict(),
             }, is_best, save_path, epoch + 1)
+    
+    training = {"train_loss": train_losses, "test_acc": eval_accs}
+    json_object = json.dumps(training, indent=4)
+    if not os.path.isdir("mt_som_results"):
+        os.makedirs("mt_som_results")
+    with open(f"mt_som_results/{args.epochs}eps{kappa}k{psi}psi{ii}.json", "w") as outfile:
+        outfile.write(json_object)
 
 
 
@@ -169,6 +187,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
     global global_step
     lossess = AverageMeter()
     running_loss = 0.0
+    epoch_loss = {'total': 0.0, 'som': 0.0, 'sup': 0.0}
 
     class_criterion = nn.CrossEntropyLoss(reduction='sum', ignore_index=NO_LABEL).cuda()
 
@@ -200,6 +219,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
 
 
         class_loss = class_criterion(model_out, target_var) / minibatch_size
+        epoch_loss['sup'] += class_loss.item()
 
         if not args.supervised_mode:
             with torch.no_grad():
@@ -241,6 +261,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
                 else:
                     consistency_weight = get_current_consistency_weight(epoch)
                     consistency_loss = consistency_weight * consistency_criterion(model_out, ema_logit) / minibatch_size
+                    epoch_loss['som'] += consistency_loss.item()
             else:
                 consistency_loss = 0
 
@@ -250,6 +271,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
                 loss = class_loss + consistency_loss + sntg_loss#.squeeze()
             else:
                 loss = class_loss + consistency_loss
+                epoch_loss['total'] += loss.item()
         else:
             loss = class_loss
         assert not (np.isnan(loss.item()) or loss.item() > 1e5), 'Loss explosion: {}'.format(loss.data[0])
@@ -271,7 +293,7 @@ def train(train_loader, model, ema_model, optimizer, epoch):
 
         lossess.update(loss.item(), input.size(0))
 
-    return lossess,running_loss
+    return lossess,running_loss, epoch_loss
 
 
 def validate(eval_loader, model):
@@ -320,8 +342,11 @@ def get_current_consistency_weight(epoch):
 
 if __name__ == '__main__':
     args = get_parameters()
+    
+    args.saveX = False
+    args.lr = 0.2
 
     args.device = torch.device(
-        "cuda:%d" % (args.gpu_id) if torch.cuda.is_available() else "cpu")
-
+        "cuda" if torch.cuda.is_available() else "cpu")
+        
     main(args)

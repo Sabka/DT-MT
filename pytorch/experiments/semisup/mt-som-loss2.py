@@ -42,7 +42,7 @@ class SomLoss(nn.Module):
     def __init__(self):
         super(SomLoss, self).__init__()
 
-    def forward(self, input1, input2, som_pred1, som_pred2, som_pred1_loc, som_pred2_loc, kappa, psi):
+    def forward(self, input1, input2, som_pred1, som_pred2, som_pred1_loc, som_pred2_loc, kappa, border):
         input1 = input1.reshape((256, 128))
         input2 = input2.reshape((256, 128))
 
@@ -51,7 +51,8 @@ class SomLoss(nn.Module):
         dist_in_nd_space = torch.sqrt(
             torch.sum(torch.pow(som_pred1 - input1, 2), dim=1)) + torch.sqrt(
             torch.sum(torch.pow(som_pred2 - input2, 2), dim=1))
-        som_loss = (kappa * (dist_on_map + psi * dist_in_nd_space)).nanmean()
+        sigm = 1 - (1 / (1 + torch.exp(-(dist_in_nd_space - border))))
+        som_loss = (kappa * (dist_on_map * sigm)).nanmean()
         return som_loss
 
 
@@ -59,7 +60,7 @@ def load_models_from_pts(args):
     som = torch.load("fv_som_results/pretrained_som-79ep.pt")
     som.eval()
 
-    checkpoint_path = "ckpts/cifar10/04-02-14:49/convlarge,Adam,200epochs,b256,lr0.2/checkpoint.10.ckpt"
+    checkpoint_path = "ckpts/cifar10/04-12-14:25/convlarge,Adam,200epochs,b256,lr0.2/checkpoint.10.ckpt"
     checkpoint = torch.load(checkpoint_path)
     model = models.__dict__[args.model](args, data=None).to(args.device)
     model.load_state_dict(checkpoint['state_dict'])
@@ -68,13 +69,13 @@ def load_models_from_pts(args):
     return som, model
 
 
-def main(args, ii):
+def main(args):
     global global_step
     global best_prec1
 
     som, model = load_models_from_pts(args)
     kappa = args.kappa
-    psi = args.psi
+    border = args.border
 
     train_transform = data.TransformTwice(transforms.Compose([
         data.RandomTranslateWithReflect(4),
@@ -172,7 +173,7 @@ def main(args, ii):
     for epoch in range(args.start_epoch, args.epochs):
 
         lss, rl, epoch_loss = train(train_loader, model, ema_model, som,
-                                    optimizer, epoch, args.epochs, kappa, psi)
+                                    optimizer, epoch, args.epochs, kappa, border)
         print(
             f'EPOCH LOSSES tot:{round(epoch_loss["total"]/10,2)}\tsup:{round(epoch_loss["sup"]/10, 2)}\tsom:{round(epoch_loss["som"]/10, 2)}')
 
@@ -205,7 +206,7 @@ def main(args, ii):
         json_object = json.dumps(training, indent=4)
         if not os.path.isdir("mt_som_results"):
             os.makedirs("mt_som_results")
-        with open(f"mt_som_results/{args.epochs}eps{kappa}k{psi}psi{ii}.json", "w") as outfile:
+        with open(f"mt_som_results/{args.epochs}eps{kappa}k{border}b.json", "w") as outfile:
             outfile.write(json_object)
 
 
@@ -215,7 +216,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
         ema_param.data = ema_param.data * alpha + (1 - alpha) * param.data
 
 
-def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kappa, psi):
+def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kappa, border):
 
     global global_step
     lossess = AverageMeter()
@@ -285,7 +286,7 @@ def train(train_loader, model, ema_model, som, optimizer, epoch, total_eps, kapp
 
                 som_loss_fn = SomLoss()
                 som_loss = som_loss_fn(model_h, ema_h, som_pred1_weights,
-                                       som_pred2_weights, som_pred1, som_pred2, cur_kappa, psi)
+                                       som_pred2_weights, som_pred1, som_pred2, cur_kappa, border)
                 consistency_loss = consistency_weight * som_loss / minibatch_size
                 epoch_loss['som'] += consistency_loss.item()
             else:
@@ -368,10 +369,10 @@ if __name__ == '__main__':
 
     args.saveX = False
     args.lr = 0.2
-    args.kappa = 1
-    args.psi = 1
+    #args.kappa = 1
+    #args.border = 3
     
-    for (kappa, psi, ii) in [(10, 1, 1), (10, 1, 2), (20, 1, 1), (20, 1, 2)]: # [(5, 0.1), (1, 10), (1,0.1)]:
+    for (kappa, border) in [(10, 1), (10, 2), (1, 2)]: # [(5, 0.1), (1, 10), (1,0.1)]:
             args.kappa = kappa
-            args.psi = psi
-            main(args, ii)
+            args.border = border
+            main(args)
