@@ -13,23 +13,17 @@ os.mkdir(cur + '/bin')
 os.mkdir(cur + '/bin/train')
 os.mkdir(cur + '/bin/val')
 
-
-
-# TODO exclude 2 animate labels to make equal ratio
 anim = {'bird', 'frog', 'cat', 'horse', 'dog', 'deer'}
 inanim = {'ship', 'truck', 'automobile', 'airplane'}
-
 
 os.mkdir(cur + '/bin/train/inanimate')
 os.mkdir(cur + '/bin/train/animate')
 
 
 for file in os.listdir(old + '/bin/train+val'):
-
     if file in inanim:
         for image in os.listdir(old + '/bin/train+val/' + file):
             shutil.copy(old + '/bin/train+val/' + file + '/' + image, cur + '/bin/train/inanimate/' + image)
-
     else:
         for image in os.listdir(old + '/bin/train+val/' + file):
             shutil.copy(old + '/bin/train+val/' + file + '/' + image,

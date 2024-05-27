@@ -27,10 +27,6 @@ for i in range(20):
             if lab not in d: d[lab] = set()
             d[lab].add(img)
 
-
-# labels we have : [3805, 3828, 3792, 3810, 3802, 3791, 3782, 3798, 3795, 3798] 38001
-# print([len(i) for i in d.values()], sum([len(i) for i in d.values()]))
-
 for i in d:
     with open(cur + '/custom/'+ i +".txt", "a") as w:
         for name in d[i]:

@@ -18,7 +18,6 @@ def train(train_loader, student_model, teacher_ema_model, optimizer, epoch, args
     # iterate through batches
     for i, ((input, ema_input), target) in enumerate(train_loader):
 
-        # TODO find out how to identify data
 
         if (input.size(0) != args.batch_size):
             print("skipping batch", i)
@@ -56,6 +55,64 @@ def train(train_loader, student_model, teacher_ema_model, optimizer, epoch, args
             lossess.update(loss.item(), input.size(0))
 
     return lossess, running_loss
+
+def train_baseline(train_loader, student_model, optimizer, epoch, args):
+    global global_step
+    lossess = AverageMeter()
+    running_loss = 0.0
+
+    # Binary MT change
+    class_supervised_criterion = nn.BCELoss(reduction='mean').to(args.device)  # .cuda()
+
+    # trenovaci mod, nastavujeme kvoli spravaniu niektorych vrstiev
+    student_model.train()
+
+    # pocitanie lossy
+    for i, ((input, ema_input), target) in enumerate(train_loader):  # iterujeme cez treningove batche
+
+
+        if (input.size(0) != args.batch_size):
+            continue
+
+        # prekonvertovanie na tenzory
+        input_var = torch.autograd.Variable(input).to(args.device)  # .cuda()
+        target_var = torch.autograd.Variable(target).to(args.device)  # .cuda()) #async=True))
+
+        minibatch_size = len(target_var)
+        labeled_minibatch_size = target_var.data.ne(NO_LABEL).sum()
+        assert labeled_minibatch_size > 0
+
+        # trenovanie
+        student_model_out, student_model_h = student_model(input_var)
+
+        # cross entrophy loss - average supervised loss S
+        # updated to BCELoss for mean teacher
+        student_model_out = student_model_out.view(256).to(torch.float32)
+        class_loss = class_supervised_criterion(student_model_out[194:],
+                                                target_var.to(torch.float32)[194:]) / minibatch_size
+
+        loss = class_loss
+        # print(loss, class_loss, consistency_loss)
+
+        # uprava vah studenta
+        optimizer.zero_grad()  # Sets the gradients of all optimized torch.Tensor s to zero.
+        loss.backward()
+        optimizer.step()
+        global_step += 1
+
+        running_loss += loss.item()
+
+        pr_freq = 20
+        if i % pr_freq == pr_freq - 1:  # print every <pr_freq> mini-batches
+            print(
+                f'Epoch: {epoch + 1}/{args.epochs}, Iteration: {i + 1}/{len(train_loader)}, Train loss: {round(running_loss / pr_freq, 5)}')  # , Acc: {None}, Time: {None}')
+            running_loss = 0.0
+
+        lossess.update(loss.item(), input.size(0))
+
+    return lossess, running_loss
+
+
 
 def init_training(student_model, teacher_ema_model, args):
     lossess = AverageMeter()
