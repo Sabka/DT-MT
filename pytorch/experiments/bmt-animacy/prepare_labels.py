@@ -20,7 +20,7 @@ for i in inanim:
 d = {}
 
 for i in range(20):
-    pth = "0data-local/labels/cifar10/4000_balanced_labels/" + ("0" if i <10 else "") + str(i) + ".txt"
+    pth = "data-local-10-labels/labels/cifar10/4000_balanced_labels/" + ("0" if i <10 else "") + str(i) + ".txt"
     with open(pth, "r") as r:
         for line in r:
             img, lab = line.split()
