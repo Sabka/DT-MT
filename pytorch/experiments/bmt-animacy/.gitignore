@@ -1,0 +1,10 @@
+misc/__pycache__/*
+models/__pycache__/*
+Datasets/__pycache__/*
+data-local/*
+__pycache__
+.idea/
+data-local-10-labels.zip
+data-local-10-labels/
+models/__pycache__/ConvLarge.cpython-310.pyc
+*.pyc
