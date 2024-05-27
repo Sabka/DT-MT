@@ -31,9 +31,6 @@ def main(args):
         # 1 trenovanie
         train(train_loader, student_model, teacher_ema_model, optimizer, epoch, args)
 
-        # TODO train should return x_convs
-        # TODO add SOM
-
         # evaluovanie po niekolkych trenovaniach
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             evaluate_models(eval_loader, student_model, teacher_ema_model)
