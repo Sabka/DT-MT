@@ -20,16 +20,12 @@ for i in inanim:
 d = {}
 
 for i in range(20):
-    pth = "0data-local/labels/cifar10/4000_balanced_labels/" + ("0" if i <10 else "") + str(i) + ".txt"
+    pth = "data-local-10-labels/labels/cifar10/4000_balanced_labels/" + ("0" if i <10 else "") + str(i) + ".txt"
     with open(pth, "r") as r:
         for line in r:
             img, lab = line.split()
             if lab not in d: d[lab] = set()
             d[lab].add(img)
-
-
-# labels we have : [3805, 3828, 3792, 3810, 3802, 3791, 3782, 3798, 3795, 3798] 38001
-# print([len(i) for i in d.values()], sum([len(i) for i in d.values()]))
 
 for i in d:
     with open(cur + '/custom/'+ i +".txt", "a") as w:

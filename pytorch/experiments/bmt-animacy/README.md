@@ -3,10 +3,10 @@
 Code is adapted from https://github.com/iSarmad/MeanTeacher-SNTG-HybridNet, which contain MT model architecture and training setup. I changed MT model to BMT model, keep some parts of training setup, and changed task to binary classification of animate and inanimate objects.
 
 ## How to create dataset for binary classification of animate vs. inanimate objects ?
-- rename `0data-local` to `data-local`
+- create copy of `0data-local` to `data-local`
 - in folder data-local/bin run `python3 unpack_cifar10.py . .`, this downloads data
 - rename `data-local` to `data-local-10-labels` and create empty `data-local`
-- `data-local-10-labels` now contain dataset devided to 10 classes, now we create binary dataset from it. Run command `python3 prepare_labels.py`.
+- `data-local-10-labels` now contain dataset devided to 10 classes, now we create binary dataset from it. Run command `python3 prepare_dataset_to_binMT.py` and `python3 prepare_labels.py`.
 - after previous step, data are ready for BMT training
 
 
